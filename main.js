@@ -9,8 +9,8 @@ else
   iconpath = path.join(__dirname, 'assets', 'servicepos.png')
 
 if (require('electron-squirrel-startup')) return app.quit();
-require('update-electron-app')()
-require('./autolauncher.js');
+require('./autoupdate')
+require('./autolauncher');
 
 let tray = null
 function createWindow() {
