@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "productName": "Printdesk",
   "description": "A electron app for connecting printers to ServicePOS",
   "main": "main.js",
@@ -15,6 +15,7 @@
   },
   "repository": "https://github.com/servicepos/printdesk",
   "build": {
+    "asar": false,
     "appId": "com.servicepos.printdesk",
     "mac": {
       "category": "public.app-category.developer-tools"
