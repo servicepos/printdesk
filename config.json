@@ -1,0 +1,10 @@
+{
+	"servicepos_url" : "http://localhost:8888",
+	"storeid" : 198,
+	"apitoken" : "3f036eaa44f2b2fff0992fb3497ce06e",
+	"aws" : {
+		"endpoint" : "a3gi5kqom9d7vn-ats.iot.eu-central-1.amazonaws.com"
+	}
+}
+
+
