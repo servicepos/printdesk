@@ -14,10 +14,11 @@ require('./autolauncher');
 
 let tray = null
 function createWindow() {
+
   tray = new Tray(iconpath)
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'ServicePOS', enabled : false,
+      label: 'ServicePOS', enabled: false,
     },
     {
       label: 'Quit', click: function () {
@@ -37,6 +38,7 @@ function createWindow() {
 // // initialization and is ready to create browser windows.
 // // Some APIs can only be used after this event occurs.
 app.on('ready', createWindow)
+
 
 /*win.on('close', function (event) {
   win = null

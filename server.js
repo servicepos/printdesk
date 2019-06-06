@@ -11,6 +11,28 @@ const { BrowserWindow } = require('electron')
 const machineid = require('node-machine-id');
 const awsiot = require('aws-iot-device-sdk');
 const util = require(path.join(__dirname, 'util.js'));
+const Store = require('electron-store');
+const store = new Store();
+const prompt = require('electron-prompt');
+
+function promptLogin() {
+	return prompt({
+	  title: 'Apitoken',
+	  label: 'Apitoken (Settings->API)',
+	  width: 450,
+	  value: '',
+	  inputAttrs: {
+		type: 'text', required: true
+	  }
+	})
+	  .then((r) => {
+		log.info(r);
+		store.set('apitoken', r);
+		return r;
+	  })
+	  .catch(log.error);
+  }
+
 
 let hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: util.isDev() })
 hiddenWindow.openDevTools()
@@ -31,6 +53,7 @@ const deviceOptions = {
 
 log.info(deviceOptions);
 let device, thingShadows
+
 createThing(_ => {
 	device = awsiot.device({
 		...deviceOptions,
@@ -65,8 +88,8 @@ createThing(_ => {
 		log.info(payload);
 
 		payload = JSON.parse(payload);
-		if (payload.apitoken != config.apitoken) {
-			log.info({ msg: 'apitoken mismatch', 'payload': payload.apitoken, 'config': config.apitoken });
+		if (payload.apitoken != store.get('apitoken', '').apitoken) {
+			log.info({ msg: 'apitoken mismatch', 'payload': payload.apitoken, 'config': store.get('apitoken', '').apitoken });
 			return;
 		}
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
@@ -84,10 +107,7 @@ createThing(_ => {
 					//res.status(500).end();
 				} else {
 					fs.writeFileSync(pdfTmpName, data);
-					printPDF(pdfTmpName, {
-						printer: payload.data.printer.name,
-						cmdArguments: payload.data.pdfOptions.cmdArguments,
-					}).then(status => {
+					printPDF(pdfTmpName, payload.data.printerOptions).then(status => {
 						//res.send(status);
 						//res.end();
 					}).catch(status => {
@@ -128,16 +148,27 @@ createThing(_ => {
 
 function createThing(callback) {
 	const hasCertificate = fs.existsSync(deviceOptions.certPath) && fs.existsSync(deviceOptions.keyPath) && fs.existsSync(publicKeyFile);
-	request.cookie(`apitoken=${config.apitoken}`)
+	const apitoken = store.get('apitoken', '');
+	var headers = {
+		'apitoken': apitoken,
+	};
 	request.post(`${config.servicepos_url}/webbackend/index.php`, {
 		json: {
 			data: { status: getStatus(), forceNew : !hasCertificate, },
 			lib: 'PrintDesk',
 			method: 'createThing'
-		}
+		},
+		headers,
 	}, (error, res, body) => {
+		if (res.statusCode == 401) {
+			/* retry login */
+			promptLogin().then(_=> {
+				createThing(callback);
+			})
+			return
+		}
 		if (error) {
-			log.error(error)
+			log.error(error.status)
 			return
 		}
 		log.info(body);
@@ -176,17 +207,18 @@ function printPDF(filename, options) {
 	switch (os.platform()) {
 		case 'darwin':
 		case 'linux':
-			cmd = `echo ${filename} -d ${options.printer} ${options.cmdArguments}`;
+			cmd = `lp ${filename} -d ${options.printer} -n ${options.copies || 1} ${options.cmdArguments}`;
 			break;
 		case 'win32':
-			const sumatra = path.join(__dirname, 'assets', 'SumatraPDF.exe');
-			cmd = `${sumatra} ${options.cmdArguments} ${filename}`;
+			const sumatra = path.join(__dirname, 'assets', 'SumatraPDF.exe').replace('app.asar', 'app.asar.unpacked')
+			cmd = `${sumatra} -print-to "${options.printer}" -print-settings "${options.copies || 1}x" ${options.cmdArguments} ${filename}`;
 			break;
 		default:
 			throw new Error(
 				'Platform not supported.'
 			);
 	}
+	log.info(cmd);
 	return cmdPromise(cmd);
 }
 
