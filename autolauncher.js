@@ -3,8 +3,7 @@ const AutoLaunch = require('auto-launch');
 const log = require('electron-log');
 
 const autoLauncher = new AutoLaunch({
-    name: 'Minecraft',
-    path: '/Applications/Minecraft.app',
+    name: 'Printdesk',
 });
 
 autoLauncher.enable();
@@ -17,5 +16,5 @@ autoLauncher.isEnabled()
     autoLauncher.enable();
 })
 .catch(function(err){
-    log.error(error);
+    log.error(err);
 });

@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "productName": "Printdesk",
   "description": "An electron app for connecting printers to ServicePOS",
   "main": "main.js",
@@ -8,7 +8,7 @@
     "publish": "electron-builder --win --macos -p always",
     "dev": "cross-env NODE_ENV=development electron .",
     "pack": "electron-builder --win --macos --dir",
-    "build": "electron-builder --win --macos"
+    "build": "electron-builder --win"
   },
   "repository": "https://github.com/servicepos/printdesk",
   "build": {
@@ -20,7 +20,7 @@
       "category": "public.app-category.developer-tools"
     },
     "win": {
-      "icon": "icons/icon.ico",
+      "icon": "assets/servicepos.ico",
       "target": [
         "squirrel"
       ]
