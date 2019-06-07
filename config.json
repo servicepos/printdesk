@@ -1,0 +1,8 @@
+{
+	"servicepos_url" : "http://192.168.1.20:8888",
+	"aws" : {
+		"endpoint" : "a3gi5kqom9d7vn-ats.iot.eu-central-1.amazonaws.com"
+	}
+}
+
+

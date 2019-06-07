@@ -25,7 +25,7 @@ compile_commands.json
 .envrc
 release-builds
 Squirrel.exe
-config.json
+config-dev.json
 
 # npm package
 /npm/dist

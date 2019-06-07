@@ -6,11 +6,11 @@ const { app } = require('electron')
 const path = require('path')
 const log = require('electron-log');
 const request = require('request')
-const config = require(path.join(__dirname, 'config.json'));
+const util = require(path.join(__dirname, 'util.js'));
+const config = util.isDev() ? require(path.join(__dirname, 'config-dev.json')) : require(path.join(__dirname, 'config.json'));
 const { BrowserWindow } = require('electron')
 const machineid = require('node-machine-id');
 const awsiot = require('aws-iot-device-sdk');
-const util = require(path.join(__dirname, 'util.js'));
 const Store = require('electron-store');
 const store = new Store();
 const prompt = require('electron-prompt');
@@ -88,8 +88,9 @@ createThing(_ => {
 		log.info(payload);
 
 		payload = JSON.parse(payload);
-		if (payload.apitoken != store.get('apitoken', '').apitoken) {
-			log.info({ msg: 'apitoken mismatch', 'payload': payload.apitoken, 'config': store.get('apitoken', '').apitoken });
+		configtoken = store.get('apitoken', '');
+		if (payload.apitoken != configtoken) {
+			log.info({ msg: 'apitoken mismatch', 'payload': payload.apitoken, 'config': configtoken });
 			return;
 		}
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
@@ -107,7 +108,7 @@ createThing(_ => {
 					//res.status(500).end();
 				} else {
 					fs.writeFileSync(pdfTmpName, data);
-					printPDF(pdfTmpName, payload.data.printerOptions).then(status => {
+					printPDF(pdfTmpName, payload.data.printer, payload.data.printerOptions).then(status => {
 						//res.send(status);
 						//res.end();
 					}).catch(status => {
@@ -201,17 +202,17 @@ function getStatus() {
 }
 
 // https://stackoverflow.com/questions/49650784/printing-a-pdf-file-with-electron-js
-function printPDF(filename, options) {
+function printPDF(filename, printer, options) {
 	let cmd;
 	log.info(options);
 	switch (os.platform()) {
 		case 'darwin':
 		case 'linux':
-			cmd = `lp ${filename} -d ${options.printer} -n ${options.copies || 1} ${options.cmdArguments}`;
+			cmd = `lp "${filename}" -d "${printer.name}" -n ${options.copies || 1} ${options.cmdArguments || ''}`;
 			break;
 		case 'win32':
 			const sumatra = path.join(__dirname, 'assets', 'SumatraPDF.exe').replace('app.asar', 'app.asar.unpacked')
-			cmd = `${sumatra} -print-to "${options.printer}" -print-settings "${options.copies || 1}x" ${options.cmdArguments} ${filename}`;
+			cmd = `${sumatra} -print-to "${printer.name}" -print-settings "${options.copies || 1}x" ${options.cmdArguments || ''} "${filename}"`;
 			break;
 		default:
 			throw new Error(
