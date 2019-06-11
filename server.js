@@ -226,7 +226,8 @@ function printPDF(filename, printer, options) {
 			break;
 		case 'win32':
 			const sumatra = path.join(__dirname, 'assets', 'SumatraPDF.exe').replace('app.asar', 'app.asar.unpacked')
-			cmd = `${sumatra} -print-to "${printer.name}" -print-settings "${options.copies || 1}x" ${options.cmdArguments || ''} "${filename}"`;
+			args = options.cmdArguments || `-print-settings "${options.copies || 1}x,noscale"`
+			cmd = `${sumatra} -print-to "${printer.name}" ${args} "${filename}"`;
 			break;
 		default:
 			log.error('Platform not supported.');
