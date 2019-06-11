@@ -10,5 +10,5 @@ electron.autoUpdater.once('update-downloaded', (ev, err) => {
 	log.info('App updated');
 	log.info(ev)
 	err && log.error(err)
-	quitAndInstall();
+	electron.autoUpdater.quitAndInstall();
 })
