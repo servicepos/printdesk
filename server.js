@@ -19,7 +19,8 @@ function promptLogin() {
 	return prompt({
 	  title: 'Apitoken',
 	  label: 'Apitoken (Settings->API)',
-	  width: 450,
+	  width: 550,
+	  height: 150,
 	  value: '',
 	  inputAttrs: {
 		type: 'text', required: true
@@ -33,7 +34,6 @@ function promptLogin() {
 	  .catch(log.error);
   }
 
-  store.set('apitoken', 'hest');
 /* make global so it is never garbage collected */
 const hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: util.isDev() })
 hiddenWindow.openDevTools()
