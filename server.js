@@ -104,15 +104,10 @@ createThing(_ => {
 				log.info(payload.data.pdfOptions);
 				if (error) {
 					log.error(error);
-					//res.send(error);
-					//res.status(500).end();
 				} else {
 					fs.writeFileSync(pdfTmpName, data);
 					printPDF(pdfTmpName, payload.data.printer, payload.data.printerOptions).then(status => {
-						//res.send(status);
-						//res.end();
 					}).catch(status => {
-						//res.status(500).end();
 					}).finally(status => {
 						device.publish(`printdesk/${thingName}/callback`, JSON.stringify({ callbackid: payload.callbackid }));
 					});

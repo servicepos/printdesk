@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "productName": "Printdesk",
   "description": "An electron app for connecting printers to ServicePOS",
   "main": "main.js",
@@ -17,7 +17,6 @@
       "assets/SumatraPDF.exe"
     ],
     "mac": {
-      "category": "public.app-category.developer-tools"
     },
     "win": {
       "icon": "assets/servicepos.ico",
