@@ -33,9 +33,11 @@ function promptLogin() {
 	  .catch(log.error);
   }
 
-
-let hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: util.isDev() })
+  store.set('apitoken', 'hest');
+/* make global so it is never garbage collected */
+const hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: util.isDev() })
 hiddenWindow.openDevTools()
+let device, thingShadows
 
 const certDir = path.join(app.getPath('userData'), 'certificates');
 const publicKeyFile = path.join(certDir, 'cer.public.key');
@@ -52,8 +54,6 @@ const deviceOptions = {
 }
 
 log.info(deviceOptions);
-let device, thingShadows
-
 createThing(_ => {
 	device = awsiot.device({
 		...deviceOptions,
@@ -79,43 +79,57 @@ createThing(_ => {
 			});
 		device
 			.on('error', function (error) {
-				log.info('error', error);
+				log.error('error', error);
 			});
 	}
-	device.subscribe(`printdesk/${thingName}/print`);
-	device.on('message', function (topic, payload) {
-		log.info(topic);
-		log.info(payload);
 
-		payload = JSON.parse(payload);
-		configtoken = store.get('apitoken', '');
+	device.subscribe(`printdesk/${thingName}/print`);
+	device.on('message', function (topic, payloadJSON) {
+		const payload = JSON.parse(payloadJSON);
+		const configtoken = store.get('apitoken', '');
 		if (payload.apitoken != configtoken) {
-			log.info({ msg: 'apitoken mismatch', 'payload': payload.apitoken, 'config': configtoken });
+			log.error({ msg: 'apitoken mismatch. Deleting saved tokren and relaunchen app. This will make the app prompt for a new token', 'payload': payload.apitoken, 'config': configtoken });
+			store.set('apitoken', '');
+			app.relaunch()
+			app.exit()
 			return;
 		}
-		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
-		const htmlTmpName = `${tmp.fileSync().name}.html`;
-		fs.writeFileSync(htmlTmpName, payload.data.html);
-		/*  windows are closed() with the garabage collector */
-		const tmpWindow = new BrowserWindow({ width: 400, height: 400, show: false })
-		tmpWindow.loadURL(`file://${htmlTmpName}`);
-		tmpWindow.webContents.on('did-finish-load', () => {
-			tmpWindow.webContents.printToPDF(payload.data.pdfOptions, (error, data) => {
-				log.info(payload.data.pdfOptions);
-				if (error) {
-					log.error(error);
-				} else {
-					fs.writeFileSync(pdfTmpName, data);
-					printPDF(pdfTmpName, payload.data.printer, payload.data.printerOptions).then(status => {
-					}).catch(status => {
-					}).finally(status => {
-						device.publish(`printdesk/${thingName}/callback`, JSON.stringify({ callbackid: payload.callbackid }));
-					});
-				}
-			});
+		switch (topic) {
+			case `printdesk/${thingName}/print`:
+				handlePrint(payload);
+				break;
+			default:
+				log.error('We do not know to handle this topic');
+		}
+	});
+	registerShahowHandlers();
+})
+
+function handlePrint(payload) {
+	const pdfTmpName = `${tmp.fileSync().name}.pdf`;
+	const htmlTmpName = `${tmp.fileSync().name}.html`;
+	fs.writeFileSync(htmlTmpName, payload.data.html);
+	/*  windows are closed() with the garabage collector */
+	const tmpWindow = new BrowserWindow({ width: 400, height: 400, show: false })
+	tmpWindow.loadURL(`file://${htmlTmpName}`);
+	tmpWindow.webContents.on('did-finish-load', () => {
+		tmpWindow.webContents.printToPDF(payload.data.pdfOptions, (error, data) => {
+			log.info(payload.data.pdfOptions);
+			if (error) {
+				log.error(error);
+			} else {
+				fs.writeFileSync(pdfTmpName, data);
+				printPDF(pdfTmpName, payload.data.printer, payload.data.printerOptions).then(status => {
+				}).catch(status => {
+				}).finally(status => {
+					pushCallback(payload.callbackid, {});
+				});
+			}
 		});
 	});
+}
 
+function registerShahowHandlers() {
 	thingShadows = awsiot.thingShadow({
 		...deviceOptions,
 		clientId: `sdk-nodejs-${getStatus().deviceid}-shadow`,
@@ -140,7 +154,11 @@ createThing(_ => {
 			log.info('received timeout on ' + thingName +
 				' with token: ' + clientToken);
 		});
-})
+}
+
+function pushCallback(callbackid, payload) {
+	device.publish(`printdesk/${thingName}/callback`, JSON.stringify({ callbackid, payload }));
+}
 
 function createThing(callback) {
 	const hasCertificate = fs.existsSync(deviceOptions.certPath) && fs.existsSync(deviceOptions.keyPath) && fs.existsSync(publicKeyFile);
@@ -156,6 +174,12 @@ function createThing(callback) {
 		},
 		headers,
 	}, (error, res, body) => {
+		if (error) {
+			log.error(error)
+			return
+		}
+		log.info(body);
+		log.info(res);
 		if (res.statusCode == 401) {
 			/* retry login */
 			promptLogin().then(_=> {
@@ -163,14 +187,9 @@ function createThing(callback) {
 			})
 			return
 		}
-		if (error) {
-			log.error(error.status)
-			return
-		}
-		log.info(body);
 
 		if (body.data.isNewThing) {
-			fs.mkdirSync(certDir, { recursive: true });
+			fs.existsSync(certDir) || fs.mkdirSync(certDir, { recursive: true });
 			fs.writeFileSync(deviceOptions.certPath, body.data.certificate.certificatePem, { flag: 'w' })
 			fs.writeFileSync(deviceOptions.keyPath, body.data.certificate.keyPair.PrivateKey, { flag: 'w' })
 			fs.writeFileSync(publicKeyFile, body.data.certificate.keyPair.PublicKey, { flag: 'w' })
@@ -210,9 +229,7 @@ function printPDF(filename, printer, options) {
 			cmd = `${sumatra} -print-to "${printer.name}" -print-settings "${options.copies || 1}x" ${options.cmdArguments || ''} "${filename}"`;
 			break;
 		default:
-			throw new Error(
-				'Platform not supported.'
-			);
+			log.error('Platform not supported.');
 	}
 	log.info(cmd);
 	return cmdPromise(cmd);

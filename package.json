@@ -1,8 +1,8 @@
 {
   "name": "printdesk",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "productName": "Printdesk",
-  "description": "An electron app for connecting printers to ServicePOS",
+  "description": "An electron app for devices to ServicePOS",
   "main": "main.js",
   "scripts": {
     "publish": "electron-builder --win -p always",
