@@ -6,7 +6,7 @@ let iconpath;
 if (os.platform() === 'win32')
   iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
 else
-  iconpath = path.join(__dirname, 'assets', 'servicepos.png')
+  iconpath = path.join(__dirname, 'assets', 'servicepos_32x32.png')
 
 if (require('electron-squirrel-startup')) return app.quit();
 require('./autoupdate')

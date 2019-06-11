@@ -1,6 +1,6 @@
 # You can publish if you wanno
-`export WIN_CSC_LINK=**/codesigningcertificate.pfx`
-`export WIN_CSC_KEY_PASSWORD=pw`
+`export CSC_LINK=~/codesigningcertificate.pfx`
+`export CSC_KEY_PASSWORD=pw`
 
 - update version no in package.json
 - `yarn run publish`

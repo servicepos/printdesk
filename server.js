@@ -157,7 +157,9 @@ function registerShahowHandlers() {
 }
 
 function pushCallback(callbackid, payload) {
-	device.publish(`printdesk/${thingName}/callback`, JSON.stringify({ callbackid, payload }));
+	const topic = `printdesk/${thingName}/callback`;
+	log.info(topic)
+	device.publish(topic, JSON.stringify({ callbackid, payload }));
 }
 
 function createThing(callback) {
