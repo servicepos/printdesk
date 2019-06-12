@@ -36,7 +36,11 @@ function promptLogin() {
 
 /* make global so it is never garbage collected */
 const hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: util.isDev() })
-hiddenWindow.openDevTools()
+if (util.isDev()) {
+	hiddenWindow.openDevTools()
+}
+
+
 let device, thingShadows
 
 const certDir = path.join(app.getPath('userData'), 'certificates');
@@ -49,6 +53,7 @@ const deviceOptions = {
 	baseReconnectTimeMs: 4000,
 	keepalive: 300,
 	protocol: 'mqtts',
+	enableMetrics : false,
 	host: config.aws.endpoint,
 	debug: util.isDev(),
 }
@@ -60,28 +65,26 @@ createThing(_ => {
 		clientId: `sdk-nodejs-${getStatus().deviceid}-printerhost`,
 	});
 
-	if (util.isDev()) {
-		device
-			.on('connect', function () {
-				log.info('connect');
-			});
-		device
-			.on('close', function () {
-				log.info('close');
-			});
-		device
-			.on('reconnect', function () {
-				log.info('reconnect');
-			});
-		device
-			.on('offline', function () {
-				log.info('offline');
-			});
-		device
-			.on('error', function (error) {
-				log.error('error', error);
-			});
-	}
+	device
+		.on('connect', function () {
+			log.info('connect');
+		});
+	device
+		.on('close', function () {
+			log.info('close');
+		});
+	device
+		.on('reconnect', function () {
+			log.info('reconnect');
+		});
+	device
+		.on('offline', function () {
+			log.info('offline');
+		});
+	device
+		.on('error', function (error) {
+			log.error('error', error);
+		});
 
 	device.subscribe(`printdesk/${thingName}/print`);
 	device.on('message', function (topic, payloadJSON) {
@@ -140,9 +143,12 @@ function registerShahowHandlers() {
 		}, function () {
 
 			const sendShadow = _ => {
-				clientTokenUpdate = thingShadows.update(thingName, {
-					'state': { 'reported': getStatus() }
-				});
+				/* windows do not exist when app is quitting. We canno send status without windows */
+				if (hiddenWindow) {
+					clientTokenUpdate = thingShadows.update(thingName, {
+						'state': { 'reported': getStatus() }
+					});
+				}
 			};
 
 			sendShadow();
@@ -176,12 +182,14 @@ function createThing(callback) {
 		},
 		headers,
 	}, (error, res, body) => {
-		if (error) {
-			log.error(error)
-			return
-		}
 		log.info(body);
 		log.info(res);
+		if (error) {
+			log.error(error)
+			log.info('retrying in 5 seconds')
+			setTimeout(_ => createThing(callback), 5000);
+			return
+		}
 		if (res.statusCode == 401) {
 			/* retry login */
 			promptLogin().then(_=> {
