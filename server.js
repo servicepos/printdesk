@@ -148,10 +148,11 @@ function registerShahowHandlers() {
 
 			const sendShadow = _ => {
 				/* windows do not exist when app is quitting. We cannot send status without windows */
-				if (hiddenWindow) {
+				if (hiddenWindow && hiddenWindow.webContents && hiddenWindow.webContents.isDestroyed() == false) {
 					try {
+						const status = getStatus();
 						clientTokenUpdate = thingShadows.update(thingName, {
-							'state': { 'reported': getStatus() }
+							'state': { 'reported': status }
 						});
 					} catch (err) {
 						log.error(err);
