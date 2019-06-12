@@ -17,22 +17,22 @@ const prompt = require('electron-prompt');
 
 function promptLogin() {
 	return prompt({
-	  title: 'Apitoken',
-	  label: 'Apitoken (Settings->API)',
-	  width: 550,
-	  height: 150,
-	  value: '',
-	  inputAttrs: {
-		type: 'text', required: true
-	  }
+		title: 'Apitoken',
+		label: 'Apitoken (Settings->API)',
+		width: 550,
+		height: 150,
+		value: '',
+		inputAttrs: {
+			type: 'text', required: true
+		}
 	})
-	  .then((r) => {
-		log.info(r);
-		store.set('apitoken', r);
-		return r;
-	  })
-	  .catch(log.error);
-  }
+		.then((r) => {
+			log.info(r);
+			store.set('apitoken', r);
+			return r;
+		})
+		.catch(log.error);
+}
 
 /* make global so it is never garbage collected */
 const hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: util.isDev() })
@@ -53,59 +53,63 @@ const deviceOptions = {
 	baseReconnectTimeMs: 4000,
 	keepalive: 300,
 	protocol: 'mqtts',
-	enableMetrics : false,
+	enableMetrics: false,
 	host: config.aws.endpoint,
 	debug: util.isDev(),
 }
 
 log.info(deviceOptions);
 createThing(_ => {
-	device = awsiot.device({
-		...deviceOptions,
-		clientId: `sdk-nodejs-${getStatus().deviceid}-printerhost`,
-	});
+	try {
 
-	device
-		.on('connect', function () {
-			log.info('connect');
-		});
-	device
-		.on('close', function () {
-			log.info('close');
-		});
-	device
-		.on('reconnect', function () {
-			log.info('reconnect');
-		});
-	device
-		.on('offline', function () {
-			log.info('offline');
-		});
-	device
-		.on('error', function (error) {
-			log.error('error', error);
+		device = awsiot.device({
+			...deviceOptions,
+			clientId: `sdk-nodejs-${getStatus().deviceid}-printerhost`,
 		});
 
-	device.subscribe(`printdesk/${thingName}/print`);
-	device.on('message', function (topic, payloadJSON) {
-		const payload = JSON.parse(payloadJSON);
-		const configtoken = store.get('apitoken', '');
-		if (payload.apitoken != configtoken) {
-			log.error({ msg: 'apitoken mismatch. Deleting saved tokren and relaunchen app. This will make the app prompt for a new token', 'payload': payload.apitoken, 'config': configtoken });
-			store.set('apitoken', '');
-			app.relaunch()
-			app.exit()
-			return;
-		}
-		switch (topic) {
-			case `printdesk/${thingName}/print`:
-				handlePrint(payload);
-				break;
-			default:
-				log.error('We do not know to handle this topic');
-		}
-	});
-	registerShahowHandlers();
+		device
+			.on('connect', function () {
+				log.info('connect');
+			});
+		device
+			.on('close', function () {
+				log.info('close');
+			});
+		device
+			.on('reconnect', function () {
+				log.info('reconnect');
+			});
+		device
+			.on('offline', function () {
+				log.info('offline');
+			});
+		device
+			.on('error', function (error) {
+				log.error('error', error);
+			});
+		device.subscribe(`printdesk/${thingName}/print`);
+		device.on('message', function (topic, payloadJSON) {
+			const payload = JSON.parse(payloadJSON);
+			const configtoken = store.get('apitoken', '');
+			if (payload.apitoken != configtoken) {
+				log.error({ msg: 'apitoken mismatch. Deleting saved tokren and relaunchen app. This will make the app prompt for a new token', 'payload': payload.apitoken, 'config': configtoken });
+				store.set('apitoken', '');
+				app.relaunch()
+				app.exit()
+				return;
+			}
+			switch (topic) {
+				case `printdesk/${thingName}/print`:
+					handlePrint(payload);
+					break;
+				default:
+					log.error('We do not know to handle this topic');
+			}
+		});
+		registerShahowHandlers();
+	} catch (e) {
+		log.error(e);
+	}
 })
 
 function handlePrint(payload) {
@@ -143,11 +147,15 @@ function registerShahowHandlers() {
 		}, function () {
 
 			const sendShadow = _ => {
-				/* windows do not exist when app is quitting. We canno send status without windows */
+				/* windows do not exist when app is quitting. We cannot send status without windows */
 				if (hiddenWindow) {
-					clientTokenUpdate = thingShadows.update(thingName, {
-						'state': { 'reported': getStatus() }
-					});
+					try {
+						clientTokenUpdate = thingShadows.update(thingName, {
+							'state': { 'reported': getStatus() }
+						});
+					} catch (err) {
+						log.error(err);
+					}
 				}
 			};
 
@@ -163,9 +171,13 @@ function registerShahowHandlers() {
 }
 
 function pushCallback(callbackid, payload) {
-	const topic = `printdesk/${thingName}/callback`;
-	log.info(topic)
-	device.publish(topic, JSON.stringify({ callbackid, payload }));
+	try {
+		const topic = `printdesk/${thingName}/callback`;
+		log.info(topic)
+		device.publish(topic, JSON.stringify({ callbackid, payload }));
+	} catch (err) {
+		log.error(err);
+	}
 }
 
 function createThing(callback) {
@@ -176,7 +188,7 @@ function createThing(callback) {
 	};
 	request.post(`${config.servicepos_url}/webbackend/index.php`, {
 		json: {
-			data: { status: getStatus(), forceNew : !hasCertificate, },
+			data: { status: getStatus(), forceNew: !hasCertificate, },
 			lib: 'PrintDesk',
 			method: 'createThing'
 		},
@@ -192,7 +204,7 @@ function createThing(callback) {
 		}
 		if (res.statusCode == 401) {
 			/* retry login */
-			promptLogin().then(_=> {
+			promptLogin().then(_ => {
 				createThing(callback);
 			})
 			return
