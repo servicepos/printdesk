@@ -103,27 +103,6 @@ server.listen(port, () => log.info(`listening on port ${port}!`))
 pushStatus(true);
 setInterval(pushStatus, 5000);
 
-const nodemailer = require('nodemailer');
-
-    const transporter = nodemailer.createTransport({
-        port: 25,
-        host: 'example.com',
-    });
-
-    const mailOptions = {
-        from: 'Script <script@example.com>', // sender address
-        to: 'lmelbye@gmail.com', // list of receivers
-        subject: 'Hello World', // Subject line
-        html: '<h1>Hello!</h1>', // html body
-    };
-
-    transporter.sendMail(mailOptions, (error, info) => {
-        if(error) {
-            log.error('ERROR!\n\n' + error);
-            return;
-        }
-    });
-
 function promptLogin() {
 	return prompt({
 		title: 'Apitoken',
