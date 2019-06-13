@@ -24,29 +24,31 @@ if (util.isDev()) {
 }
 
 
+app.use(function(req, res, next) {
+	res.header("Access-Control-Allow-Origin", "*");
+	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+	next();
+  });
+
 
 log.info(`is dev ${util.isDev()}`)
 
-//server.use(express.json()); // for parsing application/json
+server.use(express.json()); // for parsing application/json
 server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
-server.use(cors())
 
-server.use(function(req, res, next) {
-	res.set('Content-type', 'text/javascript');
-    next();
-});
 
-server.get('/print', function (req, res) {
+
+server.post('/print', function (req, res) {
 
 	if (isQuitting()) {
 		const msg = "app is quitting";
 		log.error(msg)
 		res.status(500);
-		res.jsonp({ paylod: msg });
+		res.send({ paylod: msg });
 		return;
 	}
 	log.info('post print');
-	const payload = req.query.payload;
+	const payload = req.body.payload;
 	const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 	const htmlTmpName = `${tmp.fileSync().name}.html`;
 	fs.writeFileSync(htmlTmpName, payload.html);
@@ -60,16 +62,16 @@ server.get('/print', function (req, res) {
 			if (error) {
 				log.error(error);
 				res.status(500)
-				res.jsonp({ payload: error, msg : 'could not generate pdf' });
+				res.send({ payload: error, msg : 'could not generate pdf' });
 			} else {
 				fs.writeFileSync(pdfTmpName, pdf);
 				printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
 					log.info(status);
-					res.jsonp({ payload: status });
+					res.send({ payload: status });
 				}).catch(status => {
 					log.error(status);
 					res.status(500)
-					res.jsonp({ payload: status, msg : 'could not print'});
+					res.send({ payload: status, msg : 'could not print'});
 				});
 			}
 		});
@@ -80,20 +82,20 @@ server.get('/status', function (req, res) {
 	try {
 		if (isQuitting()) throw "app is quitting"
 		const status = getStatus();
-		res.jsonp({ payload: status });
+		res.send({ payload: status });
 	} catch (e) {
-		res.status(500);
-		res.jsonp({ paylod: res });
+		res.send(500);
+		res.send({ paylod: res });
 	}
 });
 
 server.get('/log', function (req, res) {
 	try {
 		const status = getStatus();
-		res.jsonp({ payload: status });
+		res.send({ payload: status });
 	} catch (e) {
-		res.jsonp(500);
-		res.jsonp({ paylod: e });
+		res.send(500);
+		res.send({ paylod: e });
 	}
 });
 
