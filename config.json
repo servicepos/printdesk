@@ -1,8 +1,5 @@
 {
-	"servicepos_url" : "https://rc.deltateq.com",
-	"aws" : {
-		"endpoint" : "a3gi5kqom9d7vn-ats.iot.eu-central-1.amazonaws.com"
-	}
+	"servicepos_url" : "https://staging.deltateq.com"
 }
 
 

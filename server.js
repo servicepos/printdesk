@@ -12,6 +12,7 @@ const { BrowserWindow } = require('electron')
 const machineid = require('node-machine-id');
 const express = require('express');
 const server = express();
+var cors = require('cors')
 const Store = require('electron-store');
 const store = new Store();
 const prompt = require('electron-prompt');
@@ -22,32 +23,30 @@ if (util.isDev()) {
 	hiddenWindow.openDevTools()
 }
 
-store.set('apitoken', '');
 
-server.use(function (req, res, next) {
-	if (util.isDev()) {
-		res.setHeader("Access-Control-Allow-Origin", "*");
-		res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-	} else {
-		res.setHeader("Access-Control-Allow-Origin", "*.deltateq.com");
-		res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-	}
-	next();
-});
-server.use(express.json()); // for parsing application/json
+
+log.info(`is dev ${util.isDev()}`)
+
+//server.use(express.json()); // for parsing application/json
 server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+server.use(cors())
 
-server.post('/print', function (req, res) {
+server.use(function(req, res, next) {
+	res.set('Content-type', 'text/javascript');
+    next();
+});
+
+server.get('/print', function (req, res) {
 
 	if (isQuitting()) {
 		const msg = "app is quitting";
 		log.error(msg)
 		res.status(500);
-		res.send({ paylod: msg });
+		res.jsonp({ paylod: msg });
 		return;
 	}
 	log.info('post print');
-	const payload = req.body.payload;
+	const payload = req.query.payload;
 	const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 	const htmlTmpName = `${tmp.fileSync().name}.html`;
 	fs.writeFileSync(htmlTmpName, payload.html);
@@ -61,16 +60,16 @@ server.post('/print', function (req, res) {
 			if (error) {
 				log.error(error);
 				res.status(500)
-				res.send({ payload: error, msg : 'could not generate pdf' });
+				res.jsonp({ payload: error, msg : 'could not generate pdf' });
 			} else {
 				fs.writeFileSync(pdfTmpName, pdf);
 				printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
 					log.info(status);
-					res.send({ payload: status });
+					res.jsonp({ payload: status });
 				}).catch(status => {
 					log.error(status);
 					res.status(500)
-					res.send({ payload: status, msg : 'could not print'});
+					res.jsonp({ payload: status, msg : 'could not print'});
 				});
 			}
 		});
@@ -81,20 +80,20 @@ server.get('/status', function (req, res) {
 	try {
 		if (isQuitting()) throw "app is quitting"
 		const status = getStatus();
-		res.send({ payload: status });
+		res.jsonp({ payload: status });
 	} catch (e) {
-		res.send(500);
-		res.send({ paylod: res });
+		res.status(500);
+		res.jsonp({ paylod: res });
 	}
 });
 
 server.get('/log', function (req, res) {
 	try {
 		const status = getStatus();
-		res.send({ payload: status });
+		res.jsonp({ payload: status });
 	} catch (e) {
-		res.send(500);
-		res.send({ paylod: e });
+		res.jsonp(500);
+		res.jsonp({ paylod: e });
 	}
 });
 
@@ -127,8 +126,13 @@ function promptLogin() {
 }
 
 function pushStatus(askForToken) {
+
+	if (isQuitting()) {
+		return;
+	}
+
 	const apitoken = store.get('apitoken', '');
-	var headers = {
+	const headers = {
 		'apitoken': apitoken,
 	};
 	request.post(`${config.servicepos_url}/webbackend/index.php`, {
@@ -136,8 +140,8 @@ function pushStatus(askForToken) {
 		data : {status : getStatus() },
 		lib : 'PrintDesk',
 		method : 'deviceStatus',
-		headers,
-	  }
+	  },
+	  headers,
 	}, (error, res, body) => {
 		log.info(body)
 		if (res && res.statusCode == 401 && askForToken) {
