@@ -35,7 +35,7 @@ function createWindow() {
 }
 
 /* single instance production mode */
-if (util.isDev() == false && app.requestSingleInstanceLock() == false) {
+if (app.requestSingleInstanceLock() == false) {
   log.info('Another instance is running. Quitting...')
   app.quit();
 } else {
