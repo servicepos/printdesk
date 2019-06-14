@@ -6,40 +6,35 @@ const { app } = require('electron')
 const path = require('path')
 const log = require('electron-log');
 const request = require('request')
-const util = require(path.join(__dirname, 'util.js'));
-const config = util.isDev() ? require(path.join(__dirname, 'config-dev.json')) : require(path.join(__dirname, 'config.json'));
+const isDev = require('electron-is-dev');
+const config = isDev ? require(path.join(__dirname, 'config-dev.json')) : require(path.join(__dirname, 'config.json'));
 const { BrowserWindow } = require('electron')
 const machineid = require('node-machine-id');
 const express = require('express');
 const server = express();
-var cors = require('cors')
 const Store = require('electron-store');
 const store = new Store();
 const prompt = require('electron-prompt');
+const ipmodule = require("ip");
 const port = 43594;
 /* make global so it is never garbage collected */
-const hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: util.isDev() })
-if (util.isDev()) {
+const hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: isDev })
+if (isDev) {
 	hiddenWindow.openDevTools()
 }
 
-
-app.use(function(req, res, next) {
+server.use(function (req, res, next) {
 	res.header("Access-Control-Allow-Origin", "*");
 	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 	next();
-  });
+});
 
-
-log.info(`is dev ${util.isDev()}`)
+log.info(`is dev ${isDev}`)
 
 server.use(express.json()); // for parsing application/json
 server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
-
-
 server.post('/print', function (req, res) {
-
 	if (isQuitting()) {
 		const msg = "app is quitting";
 		log.error(msg)
@@ -47,7 +42,7 @@ server.post('/print', function (req, res) {
 		res.send({ paylod: msg });
 		return;
 	}
-	log.info('post print');
+	log.info(req.body);
 	const payload = req.body.payload;
 	const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 	const htmlTmpName = `${tmp.fileSync().name}.html`;
@@ -62,7 +57,7 @@ server.post('/print', function (req, res) {
 			if (error) {
 				log.error(error);
 				res.status(500)
-				res.send({ payload: error, msg : 'could not generate pdf' });
+				res.send({ payload: error, msg: 'could not generate pdf' });
 			} else {
 				fs.writeFileSync(pdfTmpName, pdf);
 				printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
@@ -71,7 +66,7 @@ server.post('/print', function (req, res) {
 				}).catch(status => {
 					log.error(status);
 					res.status(500)
-					res.send({ payload: status, msg : 'could not print'});
+					res.send({ payload: status, msg: 'could not print' });
 				});
 			}
 		});
@@ -84,18 +79,8 @@ server.get('/status', function (req, res) {
 		const status = getStatus();
 		res.send({ payload: status });
 	} catch (e) {
-		res.send(500);
+		res.status(500);
 		res.send({ paylod: res });
-	}
-});
-
-server.get('/log', function (req, res) {
-	try {
-		const status = getStatus();
-		res.send({ payload: status });
-	} catch (e) {
-		res.send(500);
-		res.send({ paylod: e });
 	}
 });
 
@@ -116,7 +101,7 @@ function promptLogin() {
 		}
 	})
 		.then(r => {
-			if(r === null) {
+			if (r === null) {
 				app.quit();
 			} else {
 				log.info(r);
@@ -138,12 +123,12 @@ function pushStatus(askForToken) {
 		'apitoken': apitoken,
 	};
 	request.post(`${config.servicepos_url}/webbackend/index.php`, {
-	  json: {
-		data : {status : getStatus() },
-		lib : 'PrintDesk',
-		method : 'deviceStatus',
-	  },
-	  headers,
+		json: {
+			data: { status: getStatus() },
+			lib: 'PrintDesk',
+			method: 'deviceStatus',
+		},
+		headers,
 	}, (error, res, body) => {
 		log.info(body)
 		if (res && res.statusCode == 401 && askForToken) {
@@ -154,26 +139,26 @@ function pushStatus(askForToken) {
 			})
 			return
 		}
-	  if (error) {
-		log.error(error)
-		return
-	  }
+		if (error) {
+			log.error(error)
+			return
+		}
 	})
 }
 
 function getStatus() {
+	const ip = ipmodule.address();
 	const printers = hiddenWindow.webContents.getPrinters();
 	const platform = os.platform();
 	const deviceid = machineid.machineIdSync({ original: true })
 	const ts = (new Date()).toISOString()
-	const interfaces = os.networkInterfaces();
 	const hostname = os.hostname()
 
 	return {
 		printers,
 		platform,
 		deviceid,
-		interfaces,
+		ip,
 		port,
 		hostname,
 		ts

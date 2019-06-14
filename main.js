@@ -1,8 +1,8 @@
 const { app, Tray, Menu } = require('electron')
 const os = require('os');
+const isDev = require('electron-is-dev');
 const path = require('path')
 const log = require('electron-log')
-const util = require(path.join(__dirname, 'util.js'));
 let iconpath;
 if (os.platform() === 'win32')
   iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
@@ -30,7 +30,7 @@ function createWindow() {
     }
   ])
   tray.setContextMenu(contextMenu)
-  if (util.isDev() == false && os.platform() === 'darwin') app.dock.hide();
+  if (isDev == false && os.platform() === 'darwin') app.dock.hide();
   require('./server.js');
 }
 
