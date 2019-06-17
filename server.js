@@ -116,6 +116,7 @@ function promptLogin() {
 function pushStatus(askForToken) {
 
 	if (isQuitting()) {
+		log.info("status not send due to app quitting")
 		return;
 	}
 
@@ -188,6 +189,6 @@ function printPDF(filename, printer, options) {
 }
 
 function isQuitting() {
-	return !(hiddenWindow && hiddenWindow.webContents && hiddenWindow.webContents.isDestroyed() == false)
+	return !hiddenWindow || !hiddenWindow.webContents || !hiddenWindow.webContents.isDestroyed();
 }
 
