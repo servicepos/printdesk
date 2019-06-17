@@ -48,8 +48,9 @@ server.post('/print', function (req, res) {
 	const htmlTmpName = `${tmp.fileSync().name}.html`;
 	fs.writeFileSync(htmlTmpName, payload.html);
 	let pdfWindow = new BrowserWindow({ width: 400, height: 400, show: false })
+	pdfWindow.webContents.session.clearCache();
 	/* windows are closed upon garbage collection */
-	pdfWindow.loadURL(`file://${htmlTmpName}`);
+	pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders" : "pragma: no-cache\n"});
 	pdfWindow.webContents.on('did-finish-load', () => {
 		log.info(payload.pdfOptions);
 		pdfWindow.webContents.printToPDF(payload.pdfOptions, (error, pdf) => {
