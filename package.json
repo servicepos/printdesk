@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.0.25",
+  "version": "1.0.27",
   "productName": "Printdesk",
   "description": "An electron app for devices to ServicePOS",
   "main": "main.js",
