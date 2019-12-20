@@ -15,52 +15,68 @@ const { spawn } = require('child_process');
 const ps = require('ps-node');
 var commandExists = require('command-exists');
 
+let process;
+let currentDevice;
 
+function assertRunning(device) {
 
-function run(api="http://127.0.0.1:8888/webbackend/index.php", deviceid="3", secret="xyzzy1234") {
+	if (!device) {
+		process && process.kill();
+	}
 
-	mustInstallMono.then(install => {
-		if (install) {
-			/* @TODO install alert */
-		} else {
-			return isBamdeskRunning();
-		}
-	}).then(isBamdeskRunning => {
+	if (!currentDevice || device.deviceid != currentDevice.id) {
+		currentDevice = device;
 
-		if (isBamdeskRunning) {
-			log.info(`bamdesk running ${isBamdeskRunning}`);
-			return false;
-		}
+		log.info('Device changed', 'restarting instance');
 
-		const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
-		switch (os.platform()) {
-			case 'darwin':
-			case 'linux':
-				cmd = spawn('mono', [bamdeskExec, api, deviceid, secret]);
-				break;
-			case 'win32':
-				cmd = spawn(bamdeskExec, [api, deviceid, secret]);
-				break;
-			default:
-				log.error('Platform not supported.');
-				return;
-		}
+		process.kill();
 
-		cmd.stdout.on('data', (data) => {
-		  log.info(`stdout: ${data}`);
+		isBamdeskRunning().then(running => {
+			if (running) {
+				log.info(`bamdesk already running`);
+				return false;
+			} else {
+				return mustInstallMono();
+			}
+		}).then(mustInstall => {
+
+			if (mustInstall) {
+				/* @must install */
+				return false;
+			}
+
+			process = startInstance(api, deviceid, secret);
+
+			const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
+			switch (os.platform()) {
+				case 'darwin':
+				case 'linux':
+					process = spawn('mono', [bamdeskExec, api, deviceid, secret]);
+					break;
+				case 'win32':
+					process = spawn(bamdeskExec, [api, deviceid, secret]);
+					break;
+				default:
+					log.error('Platform not supported.');
+					return;
+			}
+
+			process.stdout.on('data', (data) => {
+			  //log.info(`stdout: ${data}`);
+			});
+
+			process.stderr.on('data', (data) => {
+			  log.error(`stdout: ${data}`);
+			});
+
 		});
+	}
+}
 
-		cmd.stderr.on('data', (data) => {
-		  log.error(`stdout: ${data}`);
-		});
 
-		cmd.on('close', (code) => {
-		   log.info('respawing bamdesk in 10s');
-		   setTimeout(_=> {
-			run(api, deviceid, secret);
-		   }, 10000)
-		});
-	});
+
+function startInstance(api, deviceid, secret) {
+
 }
 
 function isBamdeskRunning() {
@@ -87,11 +103,34 @@ function mustInstallMono() {
 			resolve(false);
 		});
 	}
-	return commandExists('mono', function(err, commandExists) {
-		return !commandExists;
+	return new Promise((resolve, reject) => {
+		commandExists('mono', function(err, commandExists) {
+			resolve(!commandExists);
+		});
 	});
 }
 
+
+/** expires  */
+function migrateFromOldBamdeskInstallation() {
+	let file;
+	switch (os.platform()) {
+		case 'darwin':
+			file = '/Application/bamdesk/Bamdesk.exe';
+			break;
+		case 'win32':
+			file = '';
+			break;
+		default:
+			throw new Exception('Platform not supported.');
+	}
+
+	const contents = fs.readFileSync(file, 'utf8');
+
+
+
+}
+
 module.exports = {
-	run
+	run, kill
 }

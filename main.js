@@ -1,8 +1,10 @@
-const { app, Tray, Menu } = require('electron')
+const { app, Tray, Menu, MenuItem } = require('electron')
 const os = require('os');
 const isDev = require('electron-is-dev');
 const path = require('path')
 const log = require('electron-log')
+const server = require('./server.js');
+
 let iconpath;
 if (os.platform() === 'win32')
   iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
@@ -13,25 +15,19 @@ if (require('electron-squirrel-startup')) return app.quit();
 require('./autoupdate')
 require('./autolauncher');
 
-let tray = null
+const trayMenu = new Menu();
+const versionNumbeItem = new MenuItem({
+  label :`ServicePOS ${app.getVersion()}`,
+  enabled : false
+});
+trayMenu.append(versionNumbeItem);
+
 function createWindow() {
 
-  tray = new Tray(iconpath)
-  const label = `ServicePOS ${app.getVersion()}`;
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: label, enabled: false,
-    },
-    {
-      label: 'Quit', click: function () {
-        app.isQuiting = true
-        app.quit()
-      }
-    }
-  ])
-  tray.setContextMenu(contextMenu)
+  const tray = new Tray(iconpath)
   if (isDev == false && os.platform() === 'darwin') app.dock.hide();
-  require('./server.js');
+  tray.setContextMenu(trayMenu)
+  server.run();
 }
 
 /* single instance production mode */

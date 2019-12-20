@@ -17,78 +17,100 @@ const store = new Store();
 const prompt = require('electron-prompt');
 const ipmodule = require("ip");
 const port = 43594;
-/* make global so it is never garbage collected */
-const hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: isDev })
-if (isDev) {
-	hiddenWindow.openDevTools()
+const bamdesk = require('./bamdesk.js');
+let hiddenWindow;
+let lastDeviceId = null;
+
+function run() {
+	/* make global so it is never garbage collected */
+	hiddenWindow = new BrowserWindow({ width: 400, height: 400, show: isDev })
+
+	if (isDev) {
+		hiddenWindow.openDevTools()
+	}
+
+	server.use(function (req, res, next) {
+		res.header("Access-Control-Allow-Origin", "*");
+		res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+		next();
+	});
+
+	log.info(`is dev ${isDev}`)
+
+	server.use(express.json()); // for parsing application/json
+	server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
+
+	server.post('/print', function (req, res) {
+		if (isQuitting()) {
+			const msg = "app is quitting";
+			log.error(msg)
+			res.status(500);
+			res.send({ paylod: msg });
+			return;
+		}
+		log.info(req);
+		const payload = req.body.payload;
+		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
+		const htmlTmpName = `${tmp.fileSync().name}.html`;
+		fs.writeFileSync(htmlTmpName, payload.html);
+		let pdfWindow = new BrowserWindow({ width: 400, height: 400, show: false })
+		pdfWindow.webContents.session.clearCache(_ => { });
+		/* windows are closed upon garbage collection */
+		pdfWindow.loadURL(`file://${htmlTmpName}`, { "extraHeaders": "pragma: no-cache\n" });
+		pdfWindow.webContents.on('did-finish-load', () => {
+			log.info(payload.pdfOptions);
+			pdfWindow.webContents.printToPDF(payload.pdfOptions, (error, pdf) => {
+				log.info('pdf generated');
+				if (error) {
+					log.error(error);
+					res.status(500)
+					res.send({ payload: error, msg: 'could not generate pdf' });
+				} else {
+					fs.writeFileSync(pdfTmpName, pdf);
+					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
+						log.info(status);
+						res.send({ payload: status });
+					}).catch(status => {
+						log.error(status);
+						res.status(500)
+						res.send({ payload: status, msg: 'could not print' });
+					});
+				}
+			});
+		});
+	})
+
+	server.get('/status', function (req, res) {
+		try {
+			if (isQuitting()) throw "app is quitting"
+			const status = getStatus();
+			res.send({ payload: status });
+		} catch (e) {
+			res.status(500);
+			res.send({ paylod: res });
+		}
+	});
+
+	server.post('/devicesettings', function (req, res) {
+		const payload = req.body.payload;
+		setDeviceSettings(payload);
+		startBamdesk(payload);
+	})
+
+	server.listen(port, () => log.info(`listening on port ${port}!`))
+
+	pushStatus(true);
+	setInterval(pushStatus, 5000);
 }
 
-server.use(function (req, res, next) {
-	res.header("Access-Control-Allow-Origin", "*");
-	res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-	next();
-});
-
-log.info(`is dev ${isDev}`)
-
-server.use(express.json()); // for parsing application/json
-server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
-
-server.post('/print', function (req, res) {
-	if (isQuitting()) {
-		const msg = "app is quitting";
-		log.error(msg)
-		res.status(500);
-		res.send({ paylod: msg });
-		return;
+function startBamdesk(settings) {
+	/* restart instance if device id changes */
+	if (lastDeviceId != settings.bamdeskDevice.id) {
+		bamdesk.kill();
+		bamdesk.run(`${config.servicepos_url}/webbackend/index.php`, settings.bamdeskDevice.id, settings.bamdeskDevice.secretkey);
 	}
-	log.info(req.body);
-	const payload = req.body.payload;
-	const pdfTmpName = `${tmp.fileSync().name}.pdf`;
-	const htmlTmpName = `${tmp.fileSync().name}.html`;
-	fs.writeFileSync(htmlTmpName, payload.html);
-	let pdfWindow = new BrowserWindow({ width: 400, height: 400, show: false })
-	pdfWindow.webContents.session.clearCache(_ => {});
-	/* windows are closed upon garbage collection */
-	pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders" : "pragma: no-cache\n"});
-	pdfWindow.webContents.on('did-finish-load', () => {
-		log.info(payload.pdfOptions);
-		pdfWindow.webContents.printToPDF(payload.pdfOptions, (error, pdf) => {
-			log.info('pdf generated');
-			if (error) {
-				log.error(error);
-				res.status(500)
-				res.send({ payload: error, msg: 'could not generate pdf' });
-			} else {
-				fs.writeFileSync(pdfTmpName, pdf);
-				printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
-					log.info(status);
-					res.send({ payload: status });
-				}).catch(status => {
-					log.error(status);
-					res.status(500)
-					res.send({ payload: status, msg: 'could not print' });
-				});
-			}
-		});
-	});
-})
-
-server.get('/status', function (req, res) {
-	try {
-		if (isQuitting()) throw "app is quitting"
-		const status = getStatus();
-		res.send({ payload: status });
-	} catch (e) {
-		res.status(500);
-		res.send({ paylod: res });
-	}
-});
-
-server.listen(port, () => log.info(`listening on port ${port}!`))
-
-pushStatus(true);
-setInterval(pushStatus, 5000);
+	lastDeviceId = settings.bamdeskDevice.id;
+}
 
 function promptLogin() {
 	return prompt({
@@ -106,11 +128,19 @@ function promptLogin() {
 				app.quit();
 			} else {
 				log.info(r);
-				store.set('apitoken', r);
+				setApiToken(r);
 				return r;
 			}
 		})
 		.catch(log.error);
+}
+
+function setDeviceSettings(settings) {
+	store.set('deviceSettings', settings);
+}
+
+function getDeviceSettings() {
+	return store.get('deviceSettings');
 }
 
 function pushStatus(askForToken) {
@@ -120,7 +150,14 @@ function pushStatus(askForToken) {
 		return;
 	}
 
-	const apitoken = store.get('apitoken', '');
+	const deviceSettings = getDeviceSettings();
+
+	if (!deviceSettings) {
+		log.info("missing device settings")
+		return;
+	}
+
+	const apitoken = deviceSettings.apitoken;
 	const headers = {
 		'apitoken': apitoken,
 	};
@@ -133,6 +170,8 @@ function pushStatus(askForToken) {
 		headers,
 	}, (error, res, body) => {
 		log.info(body)
+		log.info(res.statusCode);
+
 		if (res && res.statusCode == 401 && askForToken) {
 			/* retry login */
 			log.error('Retrying apikey');
@@ -192,3 +231,6 @@ function isQuitting() {
 	return !hiddenWindow || !hiddenWindow.webContents || hiddenWindow.webContents.isDestroyed();
 }
 
+module.exports = {
+	run
+}
