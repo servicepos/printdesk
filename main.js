@@ -1,7 +1,6 @@
 const { app } = require('electron')
 const os = require('os');
 const isDev = require('electron-is-dev');
-const path = require('path')
 const log = require('electron-log')
 const server = require('./server.js');
 
