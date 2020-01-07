@@ -2,7 +2,7 @@ const cmdPromise = require('cmd-promise')
 const tmp = require('tmp');
 const fs = require('fs');
 const os = require('os');
-const { app } = require('electron')
+const { app, Tray, Menu } = require('electron')
 const path = require('path')
 const log = require('electron-log');
 const request = require('request')
@@ -18,8 +18,46 @@ const prompt = require('electron-prompt');
 const ipmodule = require("ip");
 const port = 43594;
 const bamdesk = require('./bamdesk.js');
+
 let hiddenWindow;
-let lastDeviceId = null;
+let iconpath;
+let tray;
+
+if (os.platform() === 'win32')
+  iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
+else
+  iconpath = path.join(__dirname, 'assets', 'servicepos_16x16.png')
+
+function setTrayMenu(status) {
+  const items = [
+    {
+      label :`ServicePOS ${app.getVersion()}`,
+      enabled : false
+    }
+  ];
+
+  if (status) {
+    items.push({
+      label :`User: ${status.store.title}`,
+      enabled : false
+    })
+
+    if (status.bamdeskdevice) {
+      items.push({
+        label :`Terminal: ${status.bamdeskdevice.title}`,
+        enabled : false
+      })
+    }
+  } else {
+    items.push({
+      label :`Logging in...`,
+      enabled : false
+    })
+  }
+  const contextMenu = Menu.buildFromTemplate(items);
+  tray.setContextMenu(contextMenu)
+}
+
 
 function run() {
 	/* make global so it is never garbage collected */
@@ -28,6 +66,9 @@ function run() {
 	if (isDev) {
 		hiddenWindow.openDevTools()
 	}
+
+	tray = new Tray(iconpath)
+	setTrayMenu(null);
 
 	server.use(function (req, res, next) {
 		res.header("Access-Control-Allow-Origin", "*");
@@ -91,25 +132,17 @@ function run() {
 		}
 	});
 
-	server.post('/devicesettings', function (req, res) {
+	server.post('/apitoken', function (req, res) {
 		const payload = req.body.payload;
-		setDeviceSettings(payload);
-		startBamdesk(payload);
+		store.set('apitoken', payload);
+		res.status(200);
+		res.send();
 	})
 
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
 	pushStatus(true);
 	setInterval(pushStatus, 5000);
-}
-
-function startBamdesk(settings) {
-	/* restart instance if device id changes */
-	if (lastDeviceId != settings.bamdeskDevice.id) {
-		bamdesk.kill();
-		bamdesk.run(`${config.servicepos_url}/webbackend/index.php`, settings.bamdeskDevice.id, settings.bamdeskDevice.secretkey);
-	}
-	lastDeviceId = settings.bamdeskDevice.id;
 }
 
 function promptLogin() {
@@ -135,13 +168,6 @@ function promptLogin() {
 		.catch(log.error);
 }
 
-function setDeviceSettings(settings) {
-	store.set('deviceSettings', settings);
-}
-
-function getDeviceSettings() {
-	return store.get('deviceSettings');
-}
 
 function pushStatus(askForToken) {
 
@@ -150,14 +176,13 @@ function pushStatus(askForToken) {
 		return;
 	}
 
-	const deviceSettings = getDeviceSettings();
+	const apitoken = store.get('apitoken');
 
-	if (!deviceSettings) {
-		log.info("missing device settings")
+	if (!apitoken) {
+		log.info("apitoken not set")
 		return;
 	}
 
-	const apitoken = deviceSettings.apitoken;
 	const headers = {
 		'apitoken': apitoken,
 	};
@@ -169,10 +194,11 @@ function pushStatus(askForToken) {
 		},
 		headers,
 	}, (error, res, body) => {
-		log.info(body)
-		log.info(res.statusCode);
-
-		if (res && res.statusCode == 401 && askForToken) {
+		if (res && res.statusCode == 200) {
+			log.info('pulled status', body);
+			setTrayMenu(body.data);
+			bamdesk.keepAlive(body.data.bamdeskdevice);
+		} else if (res && res.statusCode == 401 && askForToken) {
 			/* retry login */
 			log.error('Retrying apikey');
 			promptLogin().then(_ => {

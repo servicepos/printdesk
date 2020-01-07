@@ -1,0 +1,1 @@
+The BamdeskMint.exe can be compiled from the source in the ServicePOS repo
