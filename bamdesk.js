@@ -23,7 +23,9 @@ Internet/usb disconnection etc. will kill any running instance.
 This will restart bamdesk client if such event occour */
 async function keepAlive(device) {
 	if (!process) {
+		/* initiaite */
 		try {
+			/* kill any uninstall any legacy bamdesk, if a device is select using the now method */
 			if (device) {
 				await killLegacyBamdesk();
 				renameLegacyBamdesk();
@@ -33,16 +35,15 @@ async function keepAlive(device) {
 		}
 		currentDevice = device;
 		await run();
-	} else {
-		/* device == null means the user has deselected the device in settings. Kill currenct and start again */
-		if (!device) {
+	} else { /* change device state */
+		/* device == null means the user has deselected the device in settings. Kill current instance */
+		if (device === null) {
 			log.info('Device as been deselected by user', 'kill any running instance');
 			process.kill();
-
-		}
-		/* if user has changed device in settings. */
-		if (!currentDevice || device.id != currentDevice.id) {
-			log.info('Device changed', 'Currenct instance is being killed');
+		/* device has been change by user, kill currenct instance. It will state again with the new device since device is non-null */
+		} else if (device.id != currentDevice.id) {
+			/* if user has changed device in settings. */
+			log.info('Device changed', 'kill any running instance');
 			process.kill();
 		}
 		currentDevice = device;
@@ -54,6 +55,7 @@ async function run() {
 
 	if (!currentDevice) {
 		log.info(`No device selected`);
+		process = null;
 		return;
 	}
 
@@ -155,6 +157,7 @@ function mustInstallMono() {
 
 /** expires  */
 function renameLegacyBamdesk() {
+	log.info('rename legacy bamdesk');
 	let from, to;
 	switch (os.platform()) {
 		case 'darwin':
@@ -168,7 +171,11 @@ function renameLegacyBamdesk() {
 		default:
 			throw new Exception('Platform not supported.');
 	}
-	fs.renameSync(from, to);
+	try {
+		fs.renameSync(from, to);
+	} catch (e) {
+		log.info('Already removed');
+	}
 }
 
 module.exports = {
