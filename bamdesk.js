@@ -77,6 +77,7 @@ async function run() {
 
 	const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
 	const url = `${config.servicepos_url}/webbackend/index.php`;
+	log.info(`Bamdesk exe: ${bamdeskExec}`);
 	switch (os.platform()) {
 		case 'darwin':
 		case 'linux':

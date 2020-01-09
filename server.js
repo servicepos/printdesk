@@ -195,7 +195,7 @@ function pushStatus(askForToken) {
 		headers,
 	}, (error, res, body) => {
 		if (res && res.statusCode == 200) {
-			log.info('pulled status', body);
+			log.info('pulled status', body.data);
 			setTrayMenu(body.data);
 			bamdesk.keepAlive(body.data.bamdeskdevice);
 		} else if (res && res.statusCode == 401 && askForToken) {
