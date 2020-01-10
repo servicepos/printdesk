@@ -14,7 +14,8 @@
   "build": {
     "appId": "com.servicepos.printdesk",
     "asarUnpack": [
-      "assets/SumatraPDF.exe"
+      "assets/SumatraPDF.exe",
+      "assets/BamdeskMint.exe"
     ],
     "mac": {
       "icon": "assets/servicepos.png"
