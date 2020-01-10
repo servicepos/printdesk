@@ -157,25 +157,24 @@ function mustInstallMono() {
 
 
 /** expires  */
-function renameLegacyBamdesk() {
+async function renameLegacyBamdesk() {
 	log.info('rename legacy bamdesk');
-	let from, to;
-	switch (os.platform()) {
-		case 'darwin':
-			from = '/Applications/bamdesk';
-			to = '/Applications/bamdesk_legacy';
-			break;
-		case 'win32':
-			from = 'C:\ServicePOS';
-			to = 'C:\ServicePOS_legacy';
-			break;
-		default:
-			throw new Exception('Platform not supported.');
-	}
 	try {
-		fs.renameSync(from, to);
+		switch (os.platform()) {
+			case 'darwin':
+				const from = '/Applications/bamdesk';
+				const to = '/Applications/bamdesk_legacy';
+				fs.renameSync(from, to);
+				break;
+			case 'win32':
+				const cmd = `schtasks /CHANGE /tn "ServicePOS bamdesk" /DISABLE`;
+				await cmdPromise(cmd);
+				break;
+			default:
+				throw new Exception('Platform not supported.');
+		}
 	} catch (e) {
-		log.info('Already removed');
+		log.error('Error remiving legacy bamdesk', e);
 	}
 }
 
