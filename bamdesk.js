@@ -17,14 +17,14 @@ var commandExists = require('command-exists');
 
 let process;
 let currentDevice;
-let askedForMono;
+let askedForMono = false;
 
 /* make sure extacly a single instance of bamdesk (Dankort device driver) is running.
 Internet/usb disconnection etc. will kill any running instance.
 This will restart bamdesk client if such event occour */
 async function keepAlive(device) {
 	const monoOK = await isMonoOK();
-	log.info(`Mono ok: ${mono}`);
+	log.info(`Mono ok: ${monoOK}`);
 	if (device && !monoOK) {
 		/* ask for mono once per instane (do not spam the user) */
 		if (askedForMono) {
@@ -144,7 +144,7 @@ function isBamdeskRunning() {
 	}
 	return cmdPromise(cmd).then(out => {
 		log.info(`ps: ${out.stdout}`);
-		return out.stdout.indexOf('BamdeskMint.exe') > -1;
+		return out.stdout.indexOf('BamdeskMint.exe') > -1 || out.stdout.indexOf('Bamdesk.exe') > -1;
 	});
 }
 
