@@ -2,7 +2,7 @@ const cmdPromise = require('cmd-promise')
 const tmp = require('tmp');
 const fs = require('fs');
 const os = require('os');
-const { app } = require('electron')
+const { app, dialog } = require('electron')
 const path = require('path')
 const log = require('electron-log');
 const request = require('request')
@@ -17,11 +17,23 @@ var commandExists = require('command-exists');
 
 let process;
 let currentDevice;
+let askedForMono;
 
 /* make sure extacly a single instance of bamdesk (Dankort device driver) is running.
 Internet/usb disconnection etc. will kill any running instance.
 This will restart bamdesk client if such event occour */
 async function keepAlive(device) {
+	const monoOK = await isMonoOK();
+	log.info(`Mono ok: ${mono}`);
+	if (device && !monoOK) {
+		/* ask for mono once per instane (do not spam the user) */
+		if (askedForMono) {
+			dialog.showErrorBox(`Mono missing`, `You must install mono https://www.mono-project.com/download/stable/ to use the payment device driver`);
+			askedForMono = true;
+		}
+		return;
+	}
+
 	if (!process) {
 		/* initiaite */
 		try {
@@ -65,13 +77,7 @@ async function run() {
 		log.info(`bamdesk already running`);
 		return false;
 	}
-	const hasMono = await mustInstallMono();
 
-	if (hasMono) {
-		/* on mac/linux the user must install mono manually */
-		/* @todo install mono */
-		return false;
-	}
 
 	log.info('Starting instance', currentDevice);
 
@@ -142,33 +148,35 @@ function isBamdeskRunning() {
 	});
 }
 
-function mustInstallMono() {
+function isMonoOK() {
 	if (os.platform() == 'win32') {
 		return new Promise((resolve, reject) => {
-			resolve(false);
+			resolve(true);
 		});
 	}
 	return new Promise((resolve, reject) => {
 		commandExists('mono', function(err, commandExists) {
-			resolve(!commandExists);
+			resolve(commandExists);
 		});
 	});
 }
 
 
 /** expires  */
-async function renameLegacyBamdesk() {
+function renameLegacyBamdesk() {
 	log.info('rename legacy bamdesk');
 	try {
 		switch (os.platform()) {
 			case 'darwin':
 				const from = '/Applications/bamdesk';
 				const to = '/Applications/bamdesk_legacy';
+				log.info('Rename', {to, from});
 				fs.renameSync(from, to);
 				break;
 			case 'win32':
 				const cmd = `schtasks /CHANGE /tn "ServicePOS bamdesk" /DISABLE`;
-				await cmdPromise(cmd);
+				log.info('disable cron:', cmd);
+				cmdPromise(cmd).then(e => log.info('Ok removed schtasks',e), log.error);
 				break;
 			default:
 				throw new Exception('Platform not supported.');
@@ -179,5 +187,5 @@ async function renameLegacyBamdesk() {
 }
 
 module.exports = {
-	keepAlive
+	keepAlive,
 }
