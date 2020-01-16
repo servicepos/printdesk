@@ -197,10 +197,11 @@ function pushStatus(askForToken) {
 		if (res && res.statusCode == 200) {
 			log.info('pulled status', body.data);
 			setTrayMenu(body.data);
-			bamdesk.keepAlive(body.data.bamdeskdevice);
+			if (body.data) {
+				bamdesk.keepAlive(body.data.bamdeskdevice);
+			}
 		} else if (res && res.statusCode == 401 && askForToken) {
 			/* retry login */
-			log.error('Retrying apikey');
 			promptLogin().then(_ => {
 				pushStatus(askForToken);
 			})
