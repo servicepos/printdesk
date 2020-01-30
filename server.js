@@ -22,6 +22,7 @@ const bamdesk = require('./bamdesk.js');
 let hiddenWindow;
 let iconpath;
 let tray;
+let deviceStatus;
 
 if (os.platform() === 'win32')
   iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
@@ -139,6 +140,7 @@ function run() {
 		res.send();
 	})
 
+
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
 	pushStatus(true);
@@ -168,7 +170,6 @@ function promptLogin() {
 		.catch(log.error);
 }
 
-
 function pushStatus(askForToken) {
 
 	if (isQuitting()) {
@@ -183,9 +184,7 @@ function pushStatus(askForToken) {
 		return;
 	}
 
-	const headers = {
-		'apitoken': apitoken,
-	};
+	const headers = { 'apitoken': apitoken };
 	request.post(`${config.servicepos_url}/webbackend/index.php`, {
 		json: {
 			data: { status: getStatus() },
@@ -198,6 +197,7 @@ function pushStatus(askForToken) {
 			log.info('pulled status', body.data);
 			setTrayMenu(body.data);
 			if (body.data) {
+				deviceStatus = body.data;
 				bamdesk.keepAlive(body.data.bamdeskdevice);
 			}
 		} else if (res && res.statusCode == 401 && askForToken) {
@@ -241,16 +241,21 @@ function printPDF(filename, printer, options) {
 		case 'darwin':
 		case 'linux':
 			cmd = `lp "${filename}" -d "${printer.name}" -n ${options.copies || 1} ${options.cmdArguments || ''}`;
-			break;
+			break
 		case 'win32':
-			const sumatra = path.join(__dirname, 'assets', 'SumatraPDF.exe').replace('app.asar', 'app.asar.unpacked')
-			args = options.cmdArguments || `-print-settings "${options.copies || 1}x,noscale"`
-			cmd = `"${sumatra}" -print-to "${printer.name}" ${args} "${filename}"`;
+			if (deviceStatus.featureFlags["printdesk_PDFtoPrinter"]) {
+				const pdfToPrinter = path.join(__dirname, 'assets', 'PDFToPrinter.exe').replace('app.asar', 'app.asar.unpacked')
+				cmd = `"${pdfToPrinter}" "${filename}" "${printer.name}"`;
+			} else {
+				const sumatra = path.join(__dirname, 'assets', 'SumatraPDF.exe').replace('app.asar', 'app.asar.unpacked')
+				args = options.cmdArguments || `-print-settings "${options.copies || 1}x,noscale"`
+				cmd = `"${sumatra}" -print-to "${printer.name}" ${args} "${filename}"`;
+			}
 			break;
 		default:
 			log.error('Platform not supported.');
 	}
-	log.info(cmd);
+	log.info({cmd});
 	return cmdPromise(cmd);
 }
 
