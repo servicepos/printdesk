@@ -23,15 +23,20 @@ let askedForMono = false;
 Internet/usb disconnection etc. will kill any running instance.
 This will restart bamdesk client if such event occour */
 async function keepAlive(device) {
-	const monoOK = await isMonoOK();
-	log.info(`Mono ok: ${monoOK}`);
-	if (device && !monoOK) {
-		/* ask for mono once per instane (do not spam the user) */
-		if (askedForMono) {
-			dialog.showErrorBox(`Mono missing`, `You must install mono https://www.mono-project.com/download/stable/ to use the payment device driver`);
-			askedForMono = true;
+	if (device) {
+		try {
+			const monoOK = await isMonoOK();
+			log.info(`Mono ok: ${monoOK}`);
+		} catch (e) {
+			/* ask for mono once per instane (do not spam the user) */
+			log.error(`Mono failed: ${e}`);
+
+			if (askedForMono) {
+				dialog.showErrorBox(`Mono missing`, `You must install mono https://www.mono-project.com/download/stable/ to use the payment device driver`);
+				askedForMono = true;
+			}
+			return;
 		}
-		return;
 	}
 
 	if (!process) {
@@ -154,11 +159,7 @@ function isMonoOK() {
 			resolve(true);
 		});
 	}
-	return new Promise((resolve, reject) => {
-		commandExists('mono', function(err, commandExists) {
-			resolve(commandExists);
-		});
-	});
+	return new cmdPromise('mono -V');
 }
 
 
