@@ -143,8 +143,11 @@ function run() {
 
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
+
 	pushStatus(true);
-	setInterval(pushStatus, 5000);
+	setInterval(pushStatus, 10000);
+
+
 }
 
 function promptLogin() {
