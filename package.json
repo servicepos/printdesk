@@ -15,7 +15,7 @@
     "appId": "com.servicepos.printdesk",
     "asarUnpack": [
       "assets/SumatraPDF.exe",
-      "assets/PDFToPrinter.exe",
+      "assets/PDFtoPrinter.exe",
       "assets/BamdeskMint.exe"
     ],
     "mac": {

@@ -2,6 +2,7 @@ const cmdPromise = require('cmd-promise')
 const tmp = require('tmp');
 const fs = require('fs');
 const os = require('os');
+const process = require('process');
 const { app, dialog } = require('electron')
 const path = require('path')
 const log = require('electron-log');
@@ -15,7 +16,7 @@ const { spawn } = require('child_process');
 const ps = require('ps-node');
 var commandExists = require('command-exists');
 
-let process;
+let bamdeskProcess;
 let currentDevice;
 let askedForMono = false;
 
@@ -31,7 +32,7 @@ async function keepAlive(device) {
 			/* ask for mono once per instane (do not spam the user) */
 			log.error(`Mono failed: ${e}`);
 
-			if (askedForMono) {
+			if (!askedForMono) {
 				dialog.showErrorBox(`Mono missing`, `You must install mono https://www.mono-project.com/download/stable/ to use the payment device driver`);
 				askedForMono = true;
 			}
@@ -39,7 +40,7 @@ async function keepAlive(device) {
 		}
 	}
 
-	if (!process) {
+	if (!bamdeskProcess) {
 		/* initiaite */
 		try {
 			/* kill any uninstall any legacy bamdesk, if a device is select using the now method */
@@ -56,12 +57,12 @@ async function keepAlive(device) {
 		/* device == null means the user has deselected the device in settings. Kill current instance */
 		if (device === null) {
 			log.info('Device as been deselected by user', 'kill any running instance');
-			process.kill();
+			bamdeskProcess.kill();
 		/* device has been change by user, kill currenct instance. It will state again with the new device since device is non-null */
 		} else if (device.id != currentDevice.id) {
 			/* if user has changed device in settings. */
 			log.info('Device changed', 'kill any running instance');
-			process.kill();
+			bamdeskProcess.kill();
 		}
 		currentDevice = device;
 	}
@@ -72,7 +73,7 @@ async function run() {
 
 	if (!currentDevice) {
 		log.info(`No device selected`);
-		process = null;
+		bamdeskProcess = null;
 		return;
 	}
 
@@ -92,26 +93,29 @@ async function run() {
 	switch (os.platform()) {
 		case 'darwin':
 		case 'linux':
-			process = spawn('mono', [bamdeskExec, url, currentDevice.id, currentDevice.secretkey]);
+			const options = {
+				env : monoEnv(),
+			}
+			bamdeskProcess = spawn('mono', [bamdeskExec, url, currentDevice.id, currentDevice.secretkey], options);
 			break;
 		case 'win32':
-			process = spawn(bamdeskExec, [url, currentDevice.id, currentDevice.secretkey]);
+			bamdeskProcess = spawn(bamdeskExec, [url, currentDevice.id, currentDevice.secretkey]);
 			break;
 		default:
 			log.error('Platform not supported.');
 			return;
 	}
 
-	process.stdout.on('data', (data) => {
+	bamdeskProcess.stdout.on('data', (data) => {
 		//log.info(`stdout: ${data}`);
 	});
 
-	process.stderr.on('data', (data) => {
+	bamdeskProcess.stderr.on('data', (data) => {
 		log.error(`stdout: ${data}`);
 	});
 
 	/* restart bamdesk if it exits. USB connection lost, kill() due to change of deviceid, etc. */
-	process.on('exit', (data) => {
+	bamdeskProcess.on('exit', (data) => {
 		log.info('Bamdesk exit');
 		run();
 	});
@@ -159,7 +163,19 @@ function isMonoOK() {
 			resolve(true);
 		});
 	}
-	return new cmdPromise('mono -V');
+	const options = { env : monoEnv() };
+	log.info('Looking for mono with env');
+	log.info({options});
+	return new cmdPromise('mono -V', { env : monoEnv() });
+}
+
+function monoEnv() {
+	const env = process.env;
+	const path = `${env['path']}:/Library/Frameworks/Mono.framework/Versions/Current/Commands`;
+	return {
+		path,
+		...env
+	};
 }
 
 
