@@ -166,14 +166,14 @@ function isMonoOK() {
 	const options = { env : monoEnv() };
 	log.info('Looking for mono with env');
 	log.info({options});
-	return new cmdPromise('mono -V', { env : monoEnv() });
+	return new cmdPromise('mono -V', {}, options);
 }
 
 function monoEnv() {
 	const env = process.env;
-	const path = `${env['path']}:/Library/Frameworks/Mono.framework/Versions/Current/Commands`;
+	const monoPath = `${env['path']}:/Library/Frameworks/Mono.framework/Versions/Current/Commands`;
 	return {
-		path,
+		monoPath,
 		...env
 	};
 }
