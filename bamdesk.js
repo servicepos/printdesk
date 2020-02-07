@@ -171,10 +171,10 @@ function isMonoOK() {
 
 function monoEnv() {
 	const env = process.env;
-	const monoPath = `${env['path']}:/Library/Frameworks/Mono.framework/Versions/Current/Commands`;
+	const monoPath = `${env['PATH']}:/Library/Frameworks/Mono.framework/Versions/Current/Commands`;
 	return {
-		monoPath,
-		...env
+		...env,
+		PATH : monoPath,
 	};
 }
 
