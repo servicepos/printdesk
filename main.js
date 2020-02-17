@@ -19,8 +19,18 @@ if (app.requestSingleInstanceLock() == false) {
   log.info('Another instance is running. Quitting...')
   app.quit();
 } else {
+
   // // This method will be called when Electron has finished
   // // initialization and is ready to create browser windows.
   // // Some APIs can only be used after this event occurs.
   app.on('ready', createWindow)
+
+
+
+// This will catch clicks on links such as <a href="foobar://abc=1">open in foobar</a>
+  app.on('open-url', function (event, data) {
+    event.preventDefault();
+  });
+
+  app.setAsDefaultProtocolClient('printdesk');
 }

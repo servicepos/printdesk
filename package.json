@@ -1,14 +1,14 @@
 {
   "name": "printdesk",
-  "version": "1.0.39",
+  "version": "1.0.40",
   "productName": "Printdesk",
   "description": "An electron app for devices to ServicePOS",
   "main": "main.js",
   "scripts": {
-    "publish": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos -p always",
     "dev": "cross-env ELECTRON_IS_DEV=1 electron .",
+    "build": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos",
     "pack": "cross-env ELECTRON_IS_DEV=1 electron-builder --win --macos --dir",
-    "build": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos"
+    "publish": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos -p always"
   },
   "repository": "https://github.com/servicepos/printdesk",
   "build": {
@@ -20,6 +20,12 @@
     ],
     "mac": {
       "icon": "assets/servicepos.png"
+    },
+    "protocols": {
+      "name": "printdesk-protocol",
+      "schemes": [
+        "printdesk"
+      ]
     },
     "win": {
       "icon": "assets/servicepos.ico",
