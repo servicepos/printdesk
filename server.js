@@ -11,6 +11,7 @@ const config = isDev ? require(path.join(__dirname, 'config-dev.json')) : requir
 const { BrowserWindow } = require('electron')
 const machineid = require('node-machine-id');
 const express = require('express');
+const bodyParser = require('body-parser');
 const server = express();
 const Store = require('electron-store');
 const store = new Store();
@@ -24,6 +25,7 @@ let hiddenWindow;
 let iconpath;
 let tray;
 let deviceStatus;
+
 
 if (os.platform() === 'win32')
   iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
@@ -80,6 +82,9 @@ function run() {
 
 	log.info(`is dev ${isDev}`)
 
+	server.use(bodyParser.json({limit: '50mb'}));
+	server.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
+
 	server.use(express.json()); // for parsing application/json
 	server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
@@ -111,9 +116,8 @@ function run() {
 				} else {
 					fs.writeFileSync(pdfTmpName, pdf);
 
-					if (deviceStatus.featureFlags["printdesk_trimPDF"]) {
-						const yMargin = 5; // XXX receive this from input?
-						pdftrim.trimHeight(pdfTmpName, yMargin);
+					if (deviceStatus.featureFlags["printdesk_PDFtoPrinter"] && payload.pdfOptions.trimMarginBottom !== undefined) {
+						pdftrim.trimHeight(pdfTmpName, payload.pdfOptions.trimMarginBottom);
 					}
 
 					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {

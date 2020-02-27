@@ -1,7 +1,11 @@
 const fs = require('fs');
+const util = require('util');
 const pdfjs = require('pdfjs-dist');
 const pdflib = require('pdf-lib');
-
+const log = require('electron-log');
+const readFile = util.promisify(fs.readFile);
+const writeFile = util.promisify(fs.writeFile);
+const { PDFDocument } = pdflib;
 /* NOTE: the PDF trimmer implemented here is (currently) somewhat shaky.
  *
  * First of all, it only looks at text in order to determine the trim height.
@@ -28,7 +32,7 @@ const pdflib = require('pdf-lib');
 
 async function trimHeight(pathToPdf, yMargin) {
 	if (yMargin === undefined) yMargin = 0;
-	const pdfData = await fs.readFile(pathToPdf);
+	const pdfData = await readFile(pathToPdf);
 
 	/* Using pdf.js to find the y-coordinate of the bottom-most text
 	 * element for each page */
@@ -47,7 +51,6 @@ async function trimHeight(pathToPdf, yMargin) {
 			pageMinimumElementY.push(minimumElementY);
 		}
 	}
-
 	/* Using pdf-lib to trim each page */
 	const doc = await PDFDocument.load(pdfData);
 	const pages = doc.getPages();
@@ -60,7 +63,7 @@ async function trimHeight(pathToPdf, yMargin) {
 		page.translateContent(0, -dy);
 	}
 	const dataToWrite = await doc.save();
-	await fs.writeFile(pathToPdf, dataToWrite);
+	await writeFile(pathToPdf, dataToWrite);
 }
 
 module.exports = {
