@@ -18,6 +18,7 @@ const prompt = require('electron-prompt');
 const ipmodule = require("ip");
 const port = 43594;
 const bamdesk = require('./bamdesk.js');
+const pdftrim = require('./pdftrim');
 
 let hiddenWindow;
 let iconpath;
@@ -109,6 +110,12 @@ function run() {
 					res.send({ payload: error, msg: 'could not generate pdf' });
 				} else {
 					fs.writeFileSync(pdfTmpName, pdf);
+
+					if (deviceStatus.featureFlags["printdesk_trimPDF"]) {
+						const yMargin = 5; // XXX receive this from input?
+						pdftrim.trimHeight(pdfTmpName, yMargin);
+					}
+
 					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
 						log.info(status);
 						res.send({ payload: status });
