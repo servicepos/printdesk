@@ -19,7 +19,6 @@ const prompt = require('electron-prompt');
 const ipmodule = require("ip");
 const port = 43594;
 const bamdesk = require('./bamdesk.js');
-const pdftrim = require('./pdftrim');
 
 let hiddenWindow;
 let iconpath;
