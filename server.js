@@ -115,11 +115,6 @@ function run() {
 					res.send({ payload: error, msg: 'could not generate pdf' });
 				} else {
 					fs.writeFileSync(pdfTmpName, pdf);
-
-					if (deviceStatus.featureFlags["printdesk_PDFtoPrinter"] && payload.pdfOptions.trimMarginBottom !== undefined) {
-						pdftrim.trimHeight(pdfTmpName, payload.pdfOptions.trimMarginBottom);
-					}
-
 					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
 						log.info(status);
 						res.send({ payload: status });

@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.0.41",
+  "version": "1.0.42",
   "productName": "Printdesk",
   "description": "An electron app for devices to ServicePOS",
   "main": "main.js",
@@ -16,7 +16,8 @@
     "asarUnpack": [
       "assets/SumatraPDF.exe",
       "assets/PDFtoPrinter.exe",
-      "assets/BamdeskMint.exe"
+      "assets/BamdeskMint.exe",
+      "assets/PDF-XChange_Viewer_Settings.dat"
     ],
     "mac": {
       "icon": "assets/servicepos.png"
