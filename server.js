@@ -87,7 +87,7 @@ function run() {
 	server.use(express.json()); // for parsing application/json
 	server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
-	server.post('/print', function (req, res) {
+	server.post('/print', async function (req, res) {
 		if (isQuitting()) {
 			const msg = "app is quitting";
 			log.error(msg)
@@ -99,21 +99,21 @@ function run() {
 		const payload = req.body.payload;
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
-		fs.writeFileSync(htmlTmpName, payload.html);
+		await fs.promises.writeFile(htmlTmpName, payload.html);
 		let pdfWindow = new BrowserWindow({ width: 400, height: 400, show: false })
 		pdfWindow.webContents.session.clearCache(_ => { });
 		/* windows are closed upon garbage collection */
 		pdfWindow.loadURL(`file://${htmlTmpName}`, { "extraHeaders": "pragma: no-cache\n" });
 		pdfWindow.webContents.on('did-finish-load', () => {
 			log.info(payload.pdfOptions);
-			pdfWindow.webContents.printToPDF(payload.pdfOptions, (error, pdf) => {
+			pdfWindow.webContents.printToPDF(payload.pdfOptions, async (error, pdf) => {
 				log.info('pdf generated');
 				if (error) {
 					log.error(error);
 					res.status(500)
 					res.send({ payload: error, msg: 'could not generate pdf' });
 				} else {
-					fs.writeFileSync(pdfTmpName, pdf);
+					await fs.promises.writeFile(pdfTmpName, pdf);
 					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
 						log.info(status);
 						res.send({ payload: status });
@@ -192,12 +192,12 @@ function pushStatus(askForToken) {
 		return;
 	}
 
+	const status = getStatus();
 	const headers = { 'apitoken': apitoken };
-	request.post(`${config.servicepos_url}/webbackend/index.php`, {
+	log.info({status})
+	request.post(`${config.servicepos_url}/webbackend/api/Printdesk/deviceStatus`, {
 		json: {
-			data: { status: getStatus() },
-			lib: 'PrintDesk',
-			method: 'deviceStatus',
+			data: { status },
 		},
 		headers,
 	}, (error, res, body) => {
@@ -263,8 +263,11 @@ function printPDF(filename, printer, options) {
 		default:
 			log.error('Platform not supported.');
 	}
+	execOptions = {
+		timeout: 5000,
+	}
 	log.info({cmd});
-	return cmdPromise(cmd);
+	return cmdPromise(cmd, null, execOptions);
 }
 
 function isQuitting() {
