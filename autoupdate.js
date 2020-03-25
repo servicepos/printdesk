@@ -3,6 +3,7 @@ const electron = require('electron')
 
 require('update-electron-app')({
 	logger: log,
+	updateInterval: '5 minutes',
 	repo: 'servicepos/printdesk',
 })
 
