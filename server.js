@@ -40,8 +40,6 @@ function setTrayMenu(status) {
     }
   ];
 
-  const logFile = log.transports.file.file
-	const logPath = path.dirname(logFile);
 
   if (status) {
     items.push({
@@ -64,7 +62,9 @@ function setTrayMenu(status) {
 	items.push({
 		label :`View log`,
 		enabled : true,
-		click : function() {
+		click : _ => {
+			const logFile = log.transports.file.file;
+			const logPath = path.dirname(logFile);
 			openExplorer(logPath);
 		}
 	})
