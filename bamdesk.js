@@ -106,6 +106,8 @@ async function run() {
 			return;
 	}
 
+	log.info('Bamdesk cmd:', [bamdeskExec, url, currentDevice.id, currentDevice.secretkey, '1'].join(' '));
+
 	bamdeskProcess.stdout.on('data', (data) => {
 		log.info(`Bamdesk:`);
 		log.info(data.toString());
