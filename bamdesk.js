@@ -107,16 +107,19 @@ async function run() {
 	}
 
 	bamdeskProcess.stdout.on('data', (data) => {
-		//log.info(`stdout: ${data}`);
+		log.info(`Bamdesk:`);
+		log.info(data.toString());
 	});
 
 	bamdeskProcess.stderr.on('data', (data) => {
-		log.error(`stdout: ${data}`);
+		log.error(`Bamdesk:`);
+		log.error(data.toString())
 	});
 
 	/* restart bamdesk if it exits. USB connection lost, kill() due to change of deviceid, etc. */
 	bamdeskProcess.on('exit', (data) => {
-		log.info('Bamdesk exit');
+		log.info('Bamdesk exit:');
+		log.info(data.toString());
 		run();
 	});
 }

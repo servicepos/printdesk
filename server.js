@@ -19,6 +19,7 @@ const prompt = require('electron-prompt');
 const ipmodule = require("ip");
 const port = 43594;
 const bamdesk = require('./bamdesk.js');
+const openExplorer = require('open-file-explorer');
 
 let hiddenWindow;
 let iconpath;
@@ -39,6 +40,9 @@ function setTrayMenu(status) {
     }
   ];
 
+  const logFile = log.transports.file.file
+	const logPath = path.dirname(logFile);
+
   if (status) {
     items.push({
       label :`User: ${status.store.title}`,
@@ -57,10 +61,16 @@ function setTrayMenu(status) {
       enabled : false
     })
   }
+	items.push({
+		label :`View log`,
+		enabled : true,
+		click : function() {
+			openExplorer(logPath);
+		}
+	})
   const contextMenu = Menu.buildFromTemplate(items);
   tray.setContextMenu(contextMenu)
 }
-
 
 function run() {
 	/* make global so it is never garbage collected */
