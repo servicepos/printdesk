@@ -65,7 +65,11 @@ function setTrayMenu(status) {
 		click : _ => {
 			const logFile = log.transports.file.file;
 			const logPath = path.dirname(logFile);
-			openExplorer(logPath);
+			openExplorer(logPath,  err=> {
+				if(err) {
+					log.error(err);
+				}
+			});
 		}
 	})
   const contextMenu = Menu.buildFromTemplate(items);

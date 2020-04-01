@@ -45,7 +45,7 @@ async function keepAlive(device) {
 		try {
 			/* kill any uninstall any legacy bamdesk, if a device is select using the now method */
 			if (device) {
-				await killLegacyBamdesk();
+				killLegacyBamdesk();
 				renameLegacyBamdesk();
 			}
 		} catch (e) {
@@ -140,7 +140,8 @@ function killLegacyBamdesk() {
 			throw new Exception('Platform not supported.');
 	}
 	log.info(`Kill any legacy bamdesk ${cmd}`);
-	return cmdPromise(cmd).catch()
+	const timeout = 1000;
+	cmdPromise(cmd, {}, {timeout}).then(e => log.info, log.error);
 }
 
 function isBamdeskRunning() {
