@@ -265,14 +265,8 @@ function printPDF(filename, printer, options) {
 			cmd = `lp "${filename}" -d "${printer.name}" -n ${options.copies || 1} ${options.cmdArguments || ''}`;
 			break
 		case 'win32':
-			if (deviceStatus.featureFlags["printdesk_PDFtoPrinter"]) {
-				const pdfToPrinter = path.join(__dirname, 'assets', 'PDFToPrinter.exe').replace('app.asar', 'app.asar.unpacked')
-				cmd = `"${pdfToPrinter}" "${filename}" "${printer.name}"`;
-			} else {
-				const sumatra = path.join(__dirname, 'assets', 'SumatraPDF.exe').replace('app.asar', 'app.asar.unpacked')
-				args = options.cmdArguments || `-print-settings "${options.copies || 1}x,noscale"`
-				cmd = `"${sumatra}" -print-to "${printer.name}" ${args} "${filename}"`;
-			}
+			const pdfToPrinter = path.join(__dirname, 'assets', 'PDFToPrinter.exe').replace('app.asar', 'app.asar.unpacked')
+			cmd = `"${pdfToPrinter}" "${filename}" "${printer.name}"`;
 			break;
 		default:
 			log.error('Platform not supported.');
