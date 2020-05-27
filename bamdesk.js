@@ -89,6 +89,10 @@ async function run() {
 
 	const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
 	const url = `${config.servicepos_url}/webbackend/index.php`;
+	let cmdparams = [url, currentDevice.id, currentDevice.secretkey]
+	if (currentDevice.ip) {
+		cmdparams.push(currentDevice.ip);
+	}
 	log.info(`Bamdesk exe: ${bamdeskExec}`);
 	switch (os.platform()) {
 		case 'darwin':
@@ -96,17 +100,17 @@ async function run() {
 			const options = {
 				env : monoEnv(),
 			}
-			bamdeskProcess = spawn('mono', [bamdeskExec, url, currentDevice.id, currentDevice.secretkey], options);
+			bamdeskProcess = spawn('mono', [bamdeskExec, ...cmdparams], options);
 			break;
 		case 'win32':
-			bamdeskProcess = spawn(bamdeskExec, [url, currentDevice.id, currentDevice.secretkey]);
+			bamdeskProcess = spawn(bamdeskExec, cmdparams);
 			break;
 		default:
 			log.error('Platform not supported.');
 			return;
 	}
 
-	log.info('Bamdesk cmd:', [bamdeskExec, url, currentDevice.id, currentDevice.secretkey, '1'].join(' '));
+	log.info('Bamdesk cmd:', [bamdeskExec, url, currentDevice.id, currentDevice.secretkey, '1', currentDevice.ip].join(' '));
 
 	bamdeskProcess.stdout.on('data', (data) => {
 		log.info(`Bamdesk:`);
