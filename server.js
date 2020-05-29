@@ -220,7 +220,7 @@ function pushStatus(askForToken) {
 			setTrayMenu(body.data);
 			if (body.data) {
 				deviceStatus = body.data;
-				bamdesk.keepAlive(body.data.bamdeskdevice);
+				bamdesk.keepAlive(body.data.bamdeskdevice, body.data.featureFlags);
 			}
 		} else if (res && res.statusCode == 401 && askForToken) {
 			/* retry login */

@@ -16,6 +16,7 @@
     "asarUnpack": [
       "assets/PDFtoPrinter.exe",
       "assets/BamdeskMint.exe",
+      "assets/BamdeskMintTCP.exe",
       "assets/PDF-XChange Viewer Settings.dat"
     ],
     "mac": {

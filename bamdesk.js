@@ -19,11 +19,13 @@ var commandExists = require('command-exists');
 let bamdeskProcess;
 let currentDevice;
 let askedForMono = false;
+let featureFlags;
 
 /* make sure extacly a single instance of bamdesk (Dankort device driver) is running.
 Internet/usb disconnection etc. will kill any running instance.
 This will restart bamdesk client if such event occour */
-async function keepAlive(device) {
+async function keepAlive(device, ff) {
+	featureFlags = ff;
 	if (device) {
 		try {
 			const monoOK = await isMonoOK();
@@ -86,8 +88,12 @@ async function run() {
 
 
 	log.info('Starting instance', currentDevice);
-
-	const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
+	let bamdeskExec;
+	if (featureFlags.bamdesktcp) {
+		bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMintTCP.exe').replace('app.asar', 'app.asar.unpacked')
+	} else {
+		bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
+	}
 	const url = `${config.servicepos_url}/webbackend/index.php`;
 	let cmdparams = [url, currentDevice.id, currentDevice.secretkey]
 	if (currentDevice.ip) {
