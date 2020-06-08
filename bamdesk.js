@@ -21,9 +21,9 @@ let currentDevice;
 let askedForMono = false;
 let featureFlags;
 
-/* make sure extacly a single instance of bamdesk (Dankort device driver) is running.
+/* make sure  a single instance of bamdesk (Payment device driver) is running.
 Internet/usb disconnection etc. will kill any running instance.
-This will restart bamdesk client if such event occour */
+This will restart bamdesk client if such event occurs */
 async function keepAlive(device, ff) {
 	featureFlags = ff;
 	if (device) {
@@ -31,7 +31,7 @@ async function keepAlive(device, ff) {
 			const monoOK = await isMonoOK();
 			log.info(`Mono ok: ${monoOK}`);
 		} catch (e) {
-			/* ask for mono once per instane (do not spam the user) */
+			/* ask for mono once per instance (do not spam the user) */
 			log.error(`Mono failed: ${e}`);
 
 			if (!askedForMono) {
@@ -43,9 +43,9 @@ async function keepAlive(device, ff) {
 	}
 
 	if (!bamdeskProcess) {
-		/* initiaite */
+		/* initiate */
 		try {
-			/* kill any uninstall any legacy bamdesk, if a device is select using the now method */
+			/* kill and uninstall any legacy bamdesk, if a device is select using the now method */
 			if (device) {
 				killLegacyBamdesk();
 				renameLegacyBamdesk();
@@ -60,9 +60,8 @@ async function keepAlive(device, ff) {
 		if (device === null) {
 			log.info('Device as been deselected by user', 'kill any running instance');
 			bamdeskProcess.kill();
-		/* device has been change by user, kill currenct instance. It will state again with the new device since device is non-null */
+		/* device has been change by user, kill currenct instance. Due to binding exit, it will respawn with new device settings. */
 		} else if (device.id != currentDevice.id) {
-			/* if user has changed device in settings. */
 			log.info('Device changed', 'kill any running instance');
 			bamdeskProcess.kill();
 		}
