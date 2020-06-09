@@ -60,8 +60,8 @@ async function keepAlive(device, ff) {
 		if (device === null) {
 			log.info('Device as been deselected by user', 'kill any running instance');
 			bamdeskProcess.kill();
-		/* device has been change by user, kill currenct instance. Due to binding exit, it will respawn with new device settings. */
-		} else if (device.id != currentDevice.id) {
+		/* device has been change by user, kill current instance. Due to exit-binding, it will respawn with new device settings. */
+		} else if (device.id != currentDevice.id || device.ip != currentDevice.ip) {
 			log.info('Device changed', 'kill any running instance');
 			bamdeskProcess.kill();
 		}
