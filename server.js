@@ -109,7 +109,6 @@ function run() {
 			res.send({ paylod: msg });
 			return;
 		}
-		log.info(req);
 		const payload = req.body.payload;
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
@@ -121,13 +120,16 @@ function run() {
 		pdfWindow.webContents.on('did-finish-load', () => {
 			log.info(payload.pdfOptions);
 			pdfWindow.webContents.printToPDF(payload.pdfOptions, (error, pdf) => {
-				log.info('pdf generated');
+
+
+				log.info('pdf generated: ' + pdfTmpName);
 				if (error) {
 					log.error(error);
 					res.status(500)
 					res.send({ payload: error, msg: 'could not generate pdf' });
 				} else {
 					fs.writeFileSync(pdfTmpName, pdf);
+					pdfWindow.close();
 					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
 						log.info(status);
 						res.send({ payload: status });
@@ -271,7 +273,7 @@ function printPDF(filename, printer, options) {
 		default:
 			log.error('Platform not supported.');
 	}
-	log.info({cmd});
+	log.info(cmd);
 	return cmdPromise(cmd);
 }
 
