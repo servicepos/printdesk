@@ -1,8 +1,8 @@
 {
   "name": "printdesk",
-  "version": "1.49.0-no-autoupdate",
+  "version": "2.0.0",
   "productName": "Printdesk",
-  "description": "An electron app for devices to ServicePOS",
+  "description": "Hardware bridge for ServicePOS",
   "main": "main.js",
   "scripts": {
     "dev": "cross-env ELECTRON_IS_DEV=1 electron .",
