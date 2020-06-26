@@ -5,7 +5,7 @@ const log = require('electron-log')
 const server = require('./server.js');
 
 if (require('electron-squirrel-startup')) return app.quit();
-require('./autoupdate')
+//require('./autoupdate')
 require('./autolauncher');
 
 function createWindow() {
