@@ -121,27 +121,26 @@ function run() {
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
 		if (deviceStatus.featureFlags.chromePrint) {
+			const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
 			try {
 				await new Promise((resolve) => {
 					pdfWindow.webContents.on('did-finish-load', () => {
 						resolve();
 					});
 				});
-				await new Promise((resolve, reject) => {
-					let options = {
-						silent: true,
-						printBackground: false,
-						margin: {
-							marginType: 'printableArea'
-						},
-						device: payload.printer.description,
-						pagesPerSheet: 1,
-						collate: false,
-						copies: 1,
-					}
-					pdfWindow.webContents.print(options);
-					resolve();
-				});
+				const copies = payload.pdfOptions.copies || 1;
+				let options = {
+					silent: true,
+					printBackground: false,
+					margin: {
+						marginType,
+					},
+					device: payload.printer.description,
+					pagesPerSheet: 1,
+					copies,
+					pageSize : payload.pdfOptions.pageSize,
+				}
+				pdfWindow.webContents.print(options);
 				res.send({payload: 'ok'});
 			} catch (error) {
 				log.error(error);
