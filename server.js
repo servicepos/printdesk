@@ -101,47 +101,74 @@ function run() {
 	server.use(express.json()); // for parsing application/json
 	server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
-	server.post('/print', function (req, res) {
+	server.post('/print', async function (req, res) {
 		if (isQuitting()) {
 			const msg = "app is quitting";
 			log.error(msg)
 			res.status(500);
-			res.send({ paylod: msg });
+			res.send({paylod: msg});
 			return;
 		}
 		const payload = req.body.payload;
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
 		fs.writeFileSync(htmlTmpName, payload.html);
-		let pdfWindow = new BrowserWindow({ width: 400, height: 400, show: false })
-		pdfWindow.webContents.session.clearCache(_ => { });
+		const pdfWindow = new BrowserWindow({width: 400, height: 400, show: false})
+		pdfWindow.webContents.session.clearCache(_ => {
+		});
 		/* windows are closed upon garbage collection */
-		pdfWindow.loadURL(`file://${htmlTmpName}`, { "extraHeaders": "pragma: no-cache\n" });
-		pdfWindow.webContents.on('did-finish-load', () => {
-			log.info(payload.pdfOptions);
-			pdfWindow.webContents.printToPDF(payload.pdfOptions, (error, pdf) => {
-
-
-				log.info('pdf generated: ' + pdfTmpName);
-				if (error) {
-					log.error(error);
-					res.status(500)
-					res.send({ payload: error, msg: 'could not generate pdf' });
-				} else {
+		pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
+		log.info(payload.pdfOptions);
+		log.info(payload.printer);
+		if (deviceStatus.featureFlags.chromePrint) {
+			try {
+				await new Promise((resolve) => {
+					pdfWindow.webContents.on('did-finish-load', () => {
+						resolve();
+					});
+				});
+				await new Promise((resolve, reject) => {
+					let options = {
+						silent: true,
+						printBackground: false,
+						margin: {
+							marginType: 'printableArea'
+						},
+						device: payload.printer.description,
+						pagesPerSheet: 1,
+						collate: false,
+						copies: 1,
+					}
+					pdfWindow.webContents.print(options);
+					resolve();
+				});
+				res.send({payload: 'ok'});
+			} catch (error) {
+				log.error(error);
+				res.status(500)
+				res.send({payload: error, msg: 'could not print'});
+			}
+		} else {
+			pdfWindow.webContents.on('did-finish-load', () => {
+				pdfWindow.webContents.printToPDF(payload.pdfOptions).then(pdf => {
 					fs.writeFileSync(pdfTmpName, pdf);
 					pdfWindow.close();
 					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
 						log.info(status);
-						res.send({ payload: status });
+						res.send({payload: status});
 					}).catch(status => {
 						log.error(status);
 						res.status(500)
-						res.send({ payload: status, msg: 'could not print' });
+						res.send({payload: status, msg: 'could not print'});
 					});
-				}
-			});
-		});
-	})
+				}, error => {
+					log.error(error);
+					res.status(500)
+					res.send({payload: error, msg: 'could not generate pdf'});
+				});
+			})
+		}
+	});
 
 	server.get('/status', function (req, res) {
 		try {
@@ -164,11 +191,8 @@ function run() {
 
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
-
 	pushStatus(true);
 	setInterval(pushStatus, 10000);
-
-
 }
 
 function promptLogin() {
@@ -260,7 +284,7 @@ function getStatus() {
 // https://stackoverflow.com/questions/49650784/printing-a-pdf-file-with-electron-js
 function printPDF(filename, printer, options) {
 	let cmd;
-	log.info(options);
+	log.info({'printpdf' : options});
 	switch (os.platform()) {
 		case 'darwin':
 		case 'linux':
