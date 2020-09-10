@@ -135,7 +135,7 @@ function run() {
 					margin: {
 						marginType,
 					},
-					device: payload.printer.description,
+					device: payload.printer.name,
 					pagesPerSheet: 1,
 					copies,
 					pageSize : payload.pdfOptions.pageSize,
