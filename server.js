@@ -113,40 +113,34 @@ function run() {
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
 		fs.writeFileSync(htmlTmpName, payload.html);
-		const pdfWindow = new BrowserWindow({width: 400, height: 400, show: false})
-		pdfWindow.webContents.session.clearCache(_ => {
-		});
-		/* windows are closed upon garbage collection */
-		pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
+		const pdfWindow = new BrowserWindow({width: 400, height: 400, show: true, webPreferences : { worldSafeExecuteJavaScript: true }})
+		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
 		if (deviceStatus.featureFlags.chromePrint) {
 			const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
-			try {
-				await new Promise((resolve) => {
-					pdfWindow.webContents.on('did-finish-load', () => {
-						resolve();
-					});
-				});
-				const copies = payload.pdfOptions.copies || 1;
-				let options = {
-					silent: true,
-					printBackground: false,
-					margin: {
-						marginType,
-					},
-					device: payload.printer.name,
-					pagesPerSheet: 1,
-					copies,
-					pageSize : payload.pdfOptions.pageSize,
-				}
-				pdfWindow.webContents.print(options);
-				res.send({payload: 'ok'});
-			} catch (error) {
-				log.error(error);
-				res.status(500)
-				res.send({payload: error, msg: 'could not print'});
+			const copies = payload.pdfOptions.copies || 1;
+			let options = {
+				silent: true,
+				printBackground: false,
+				margin: {
+					marginType,
+				},
+				device: payload.printer.name,
+				pagesPerSheet: 1,
+				copies,
+				pageSize : payload.pdfOptions.pageSize,
 			}
+			try {
+				await pdfWindow.webContents.print(options);
+				await pdfWindow.webContents.executeJavaScript('setTimeout(_ => window.close(), 2000)');
+				res.send({payload: 'ok'});
+			} catch (e) {
+				log.error(e);
+				res.status(500)
+				res.send({payload: e, msg: 'could not print'});
+			}
+
 		} else {
 			pdfWindow.webContents.on('did-finish-load', () => {
 				pdfWindow.webContents.printToPDF(payload.pdfOptions).then(pdf => {
