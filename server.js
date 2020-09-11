@@ -113,11 +113,12 @@ function run() {
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
 		fs.writeFileSync(htmlTmpName, payload.html);
-		const pdfWindow = new BrowserWindow({width: 400, height: 400, show: true, webPreferences : { worldSafeExecuteJavaScript: true }})
+		const pdfWindow = new BrowserWindow({width: 400, height: 400, show: false, webPreferences : { worldSafeExecuteJavaScript: true }})
 		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
 		if (deviceStatus.featureFlags.chromePrint) {
+			log.info('Print with chrome')
 			const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
 			const copies = payload.pdfOptions.copies || 1;
 			let options = {
@@ -133,7 +134,7 @@ function run() {
 			}
 			try {
 				await pdfWindow.webContents.print(options);
-				await pdfWindow.webContents.executeJavaScript('setTimeout(_ => window.close(), 2000)');
+				await pdfWindow.webContents.executeJavaScript('setTimeout(_ => window.close(), 1000)');
 				res.send({payload: 'ok'});
 			} catch (e) {
 				log.error(e);
@@ -142,24 +143,24 @@ function run() {
 			}
 
 		} else {
-			pdfWindow.webContents.on('did-finish-load', () => {
-				pdfWindow.webContents.printToPDF(payload.pdfOptions).then(pdf => {
-					fs.writeFileSync(pdfTmpName, pdf);
-					pdfWindow.close();
-					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
-						log.info(status);
-						res.send({payload: status});
-					}).catch(status => {
-						log.error(status);
-						res.status(500)
-						res.send({payload: status, msg: 'could not print'});
-					});
-				}, error => {
-					log.error(error);
+			pdfWindow.webContents.printToPDF(payload.pdfOptions).then(pdf => {
+				log.info('Print via pdf')
+
+				fs.writeFileSync(pdfTmpName, pdf);
+				pdfWindow.close();
+				printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
+					log.info(status);
+					res.send({payload: status});
+				}).catch(status => {
+					log.error(status);
 					res.status(500)
-					res.send({payload: error, msg: 'could not generate pdf'});
+					res.send({payload: status, msg: 'could not print'});
 				});
-			})
+			}, error => {
+				log.error(error);
+				res.status(500)
+				res.send({payload: error, msg: 'could not generate pdf'});
+			});
 		}
 	});
 
