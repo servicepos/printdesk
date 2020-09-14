@@ -120,17 +120,14 @@ function run() {
 		if (deviceStatus.featureFlags.chromePrint) {
 			log.info('Print with chrome')
 			const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
-			const copies = payload.pdfOptions.copies || 1;
 			let options = {
+				...payload.pdfOptions,
 				silent: true,
 				printBackground: false,
 				margins : {
 					marginType,
 				},
 				deviceName: payload.printer.name,
-				pagesPerSheet: 1,
-				copies,
-				pageSize : payload.pdfOptions.pageSize,
 			}
 			log.info({options});
 

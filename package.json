@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.56.0-no-autoupdate",
+  "version": "1.57.0-no-autoupdate",
   "productName": "Printdesk",
   "description": "Hardware bridge for ServicePOS",
   "main": "main.js",
