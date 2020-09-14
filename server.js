@@ -124,24 +124,27 @@ function run() {
 			let options = {
 				silent: true,
 				printBackground: false,
-				margin: {
+				margins : {
 					marginType,
 				},
-				device: payload.printer.name,
+				deviceName: payload.printer.name,
 				pagesPerSheet: 1,
 				copies,
 				pageSize : payload.pdfOptions.pageSize,
 			}
-			try {
-				await pdfWindow.webContents.print(options);
-				await pdfWindow.webContents.executeJavaScript('setTimeout(_ => window.close(), 1000)');
-				res.send({payload: 'ok'});
-			} catch (e) {
-				log.error(e);
-				res.status(500)
-				res.send({payload: e, msg: 'could not print'});
-			}
+			log.info({options});
 
+			pdfWindow.webContents.print(options, function(success, failureReason) {
+				pdfWindow.close();
+				if (success) {
+					log.info('print ok');
+					res.send({payload: 'ok'});
+				} else {
+					log.error(failureReason);
+					res.status(500)
+					res.send({payload: failureReason, msg: 'could not print'});
+				}
+			});
 		} else {
 			pdfWindow.webContents.printToPDF(payload.pdfOptions).then(pdf => {
 				log.info('Print via pdf')
