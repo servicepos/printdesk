@@ -117,51 +117,31 @@ function run() {
 		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
-		if (deviceStatus.featureFlags.chromePrint) {
-			log.info('Print with chrome')
-			const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
-			let options = {
-				...payload.pdfOptions,
-				silent: true,
-				printBackground: false,
-				margins : {
-					marginType,
-				},
-				deviceName: payload.printer.name,
-			}
-			log.info({options});
-
-			pdfWindow.webContents.print(options, function(success, failureReason) {
-				pdfWindow.close();
-				if (success) {
-					log.info('print ok');
-					res.send({payload: 'ok'});
-				} else {
-					log.error(failureReason);
-					res.status(500)
-					res.send({payload: failureReason, msg: 'could not print'});
-				}
-			});
-		} else {
-			pdfWindow.webContents.printToPDF(payload.pdfOptions).then(pdf => {
-				log.info('Print via pdf')
-
-				fs.writeFileSync(pdfTmpName, pdf);
-				pdfWindow.close();
-				printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
-					log.info(status);
-					res.send({payload: status});
-				}).catch(status => {
-					log.error(status);
-					res.status(500)
-					res.send({payload: status, msg: 'could not print'});
-				});
-			}, error => {
-				log.error(error);
-				res.status(500)
-				res.send({payload: error, msg: 'could not generate pdf'});
-			});
+		log.info('Print with chrome')
+		const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
+		let options = {
+			...payload.pdfOptions,
+			silent: true,
+			printBackground: false,
+			margins : {
+				marginType,
+			},
+			deviceName: payload.printer.name,
 		}
+		log.info({options});
+
+		pdfWindow.webContents.print(options, function(success, failureReason) {
+			pdfWindow.close();
+			if (success) {
+				log.info('print ok');
+				res.send({payload: 'ok'});
+			} else {
+				log.error(failureReason);
+				res.status(500)
+				res.send({payload: failureReason, msg: 'could not print'});
+			}
+		});
+
 	});
 
 	server.get('/status', function (req, res) {
@@ -192,7 +172,7 @@ function run() {
 function promptLogin() {
 	return prompt({
 		title: 'Apitoken',
-		label: 'Apitoken (Settings->API)',
+		label: 'Apitoken (Settings->Users)',
 		width: 550,
 		height: 150,
 		value: '',
@@ -273,26 +253,6 @@ function getStatus() {
 		hostname,
 		ts
 	};
-}
-
-// https://stackoverflow.com/questions/49650784/printing-a-pdf-file-with-electron-js
-function printPDF(filename, printer, options) {
-	let cmd;
-	log.info({'printpdf' : options});
-	switch (os.platform()) {
-		case 'darwin':
-		case 'linux':
-			cmd = `lp "${filename}" -d "${printer.name}" -n ${options.copies || 1} ${options.cmdArguments || ''}`;
-			break
-		case 'win32':
-			const pdfToPrinter = path.join(__dirname, 'assets', 'PDFToPrinter.exe').replace('app.asar', 'app.asar.unpacked')
-			cmd = `"${pdfToPrinter}" "${filename}" "${printer.name}"`;
-			break;
-		default:
-			log.error('Platform not supported.');
-	}
-	log.info(cmd);
-	return cmdPromise(cmd);
 }
 
 function isQuitting() {

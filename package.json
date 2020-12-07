@@ -14,10 +14,8 @@
   "build": {
     "appId": "com.servicepos.printdesk",
     "asarUnpack": [
-      "assets/PDFtoPrinter.exe",
       "assets/BamdeskMint.exe",
-      "assets/BamdeskMintTCP.exe",
-      "assets/PDF-XChange Viewer Settings.dat"
+      "assets/BamdeskMintTCP.exe"
     ],
     "mac": {
       "icon": "assets/servicepos.png"
