@@ -1,4 +1,3 @@
-const cmdPromise = require('cmd-promise')
 const tmp = require('tmp');
 const fs = require('fs');
 const os = require('os');

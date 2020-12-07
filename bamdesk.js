@@ -1,20 +1,13 @@
 const cmdPromise = require('cmd-promise')
-const tmp = require('tmp');
-const fs = require('fs');
 const os = require('os');
 const process = require('process');
-const { app, dialog } = require('electron')
+const { dialog } = require('electron')
 const path = require('path')
 const log = require('electron-log');
-const request = require('request')
 const isDev = require('electron-is-dev');
 const config = isDev ? require(path.join(__dirname, 'config-dev.json')) : require(path.join(__dirname, 'config.json'));
-const { BrowserWindow } = require('electron')
-const machineid = require('node-machine-id');
-const Store = require('electron-store');
 const { spawn } = require('child_process');
-const ps = require('ps-node');
-var commandExists = require('command-exists');
+
 
 let bamdeskProcess = null;
 let currentDevice;
