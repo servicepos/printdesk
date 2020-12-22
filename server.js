@@ -19,6 +19,7 @@ const ipmodule = require("ip");
 const port = 43594;
 const bamdesk = require('./bamdesk.js');
 const openExplorer = require('open-file-explorer');
+const crashReporter = require('electron').crashReporter;
 
 let hiddenWindow;
 let iconpath;
@@ -41,6 +42,8 @@ function setTrayMenu(status) {
 
 
   if (status) {
+	crashReporter.addExtraParameter("Store_title", status.store.title);
+	crashReporter.addExtraParameter("Store_id", status.store.id.toString());
     items.push({
       label :`User: ${status.store.title}`,
       enabled : false
@@ -65,6 +68,17 @@ function setTrayMenu(status) {
 			const logFile = log.transports.file.file;
 			const logPath = path.dirname(logFile);
 			openExplorer(logPath,  err=> {
+				if(err) {
+					log.error(err);
+				}
+			});
+		}
+	})
+	items.push({
+		label :`View crash dumps`,
+		enabled : true,
+		click : _ => {
+			openExplorer(app.getPath('crashDumps'),  err=> {
 				if(err) {
 					log.error(err);
 				}

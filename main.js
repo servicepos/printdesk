@@ -1,4 +1,4 @@
-const { app } = require('electron')
+const { app, crashReporter } = require('electron')
 const os = require('os');
 const isDev = require('electron-is-dev');
 const log = require('electron-log')
@@ -13,6 +13,13 @@ function createWindow() {
   if (isDev == false && os.platform() === 'darwin') app.dock.hide();
   server.run();
 }
+
+crashReporter.start({
+  productName: "Printdesk",
+  companyName: "ServicePOS",
+  submitURL: "",
+  uploadToServer: false,
+})
 
 /* single instance production mode */
 if (app.requestSingleInstanceLock() == false) {
