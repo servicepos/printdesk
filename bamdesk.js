@@ -65,12 +65,8 @@ async function run() {
 		return;
 	}
 
-	let bamdeskExec;
-	if (featureFlags.bamdesktcp) {
-		bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMintTCP.exe').replace('app.asar', 'app.asar.unpacked')
-	} else {
-		bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
-	}
+
+	const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
 	const url = `${config.servicepos_url}/webbackend/index.php`;
 	let cmdparams = [url, currentDevice.id, currentDevice.secretkey]
 	if (currentDevice.ip) {

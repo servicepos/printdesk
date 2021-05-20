@@ -16,8 +16,7 @@
   "build": {
     "appId": "com.servicepos.printdesk",
     "asarUnpack": [
-      "assets/BamdeskMint.exe",
-      "assets/BamdeskMintTCP.exe"
+      "assets/BamdeskMint.exe"
     ],
     "mac": {
       "icon": "assets/servicepos.png"
