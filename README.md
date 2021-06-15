@@ -4,7 +4,7 @@
 
 Please be sure everything works. Payment devices will break and all hell will break loose if Printdesk does not work.
 
-- Get certifcates from Google Drive
+- Get certifcates from password1
 - Update version no in package.json
 - `yarn run publish`
 - Goto https://github.com/servicepos/printdesk/releases and test the build
