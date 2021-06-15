@@ -126,7 +126,7 @@ function run() {
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
 		fs.writeFileSync(htmlTmpName, payload.html);
-		const pdfWindow = new BrowserWindow({width: 400, height: 400, show: false, javascript : false, webPreferences : { worldSafeExecuteJavaScript: true }})
+		const pdfWindow = new BrowserWindow({width: 400, height: 400, webPreferences : { javascript : false, worldSafeExecuteJavaScript: true }})
 		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
