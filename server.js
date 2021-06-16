@@ -1,4 +1,3 @@
-const cmdPromise = require('cmd-promise')
 const tmp = require('tmp');
 const fs = require('fs');
 const os = require('os');
@@ -20,6 +19,7 @@ const ipmodule = require("ip");
 const port = 43594;
 const bamdesk = require('./bamdesk.js');
 const openExplorer = require('open-file-explorer');
+const crashReporter = require('electron').crashReporter;
 
 let hiddenWindow;
 let iconpath;
@@ -42,6 +42,8 @@ function setTrayMenu(status) {
 
 
   if (status) {
+	crashReporter.addExtraParameter("Store_title", status.store.title);
+	crashReporter.addExtraParameter("Store_id", status.store.id.toString());
     items.push({
       label :`User: ${status.store.title}`,
       enabled : false
@@ -66,6 +68,17 @@ function setTrayMenu(status) {
 			const logFile = log.transports.file.file;
 			const logPath = path.dirname(logFile);
 			openExplorer(logPath,  err=> {
+				if(err) {
+					log.error(err);
+				}
+			});
+		}
+	})
+	items.push({
+		label :`View crash dumps`,
+		enabled : true,
+		click : _ => {
+			openExplorer(app.getPath('crashDumps'),  err=> {
 				if(err) {
 					log.error(err);
 				}
@@ -101,47 +114,48 @@ function run() {
 	server.use(express.json()); // for parsing application/json
 	server.use(express.urlencoded({ extended: true })); // for parsing application/x-www-form-urlencoded
 
-	server.post('/print', function (req, res) {
+	server.post('/print', async function (req, res) {
 		if (isQuitting()) {
 			const msg = "app is quitting";
 			log.error(msg)
 			res.status(500);
-			res.send({ paylod: msg });
+			res.send({paylod: msg});
 			return;
 		}
 		const payload = req.body.payload;
 		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
 		fs.writeFileSync(htmlTmpName, payload.html);
-		let pdfWindow = new BrowserWindow({ width: 400, height: 400, show: false })
-		pdfWindow.webContents.session.clearCache(_ => { });
-		/* windows are closed upon garbage collection */
-		pdfWindow.loadURL(`file://${htmlTmpName}`, { "extraHeaders": "pragma: no-cache\n" });
-		pdfWindow.webContents.on('did-finish-load', () => {
-			log.info(payload.pdfOptions);
-			pdfWindow.webContents.printToPDF(payload.pdfOptions, (error, pdf) => {
+		const pdfWindow = new BrowserWindow({width: 400, height: 400, show : false, webPreferences : { javascript : false, worldSafeExecuteJavaScript: true }})
+		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
+		log.info(payload.pdfOptions);
+		log.info(payload.printer);
+		log.info('Print with chrome')
+		const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
+		let options = {
+			...payload.pdfOptions,
+			silent: true,
+			printBackground: false,
+			margins : {
+				marginType,
+			},
+			deviceName: payload.printer.name,
+		}
+		log.info({options});
 
-
-				log.info('pdf generated: ' + pdfTmpName);
-				if (error) {
-					log.error(error);
-					res.status(500)
-					res.send({ payload: error, msg: 'could not generate pdf' });
-				} else {
-					fs.writeFileSync(pdfTmpName, pdf);
-					pdfWindow.close();
-					printPDF(pdfTmpName, payload.printer, payload.printerOptions).then(status => {
-						log.info(status);
-						res.send({ payload: status });
-					}).catch(status => {
-						log.error(status);
-						res.status(500)
-						res.send({ payload: status, msg: 'could not print' });
-					});
-				}
-			});
+		pdfWindow.webContents.print(options, function(success, failureReason) {
+			pdfWindow.close();
+			if (success) {
+				log.info('print ok');
+				res.send({payload: 'ok'});
+			} else {
+				log.error(failureReason);
+				res.status(500)
+				res.send({payload: failureReason, msg: 'could not print'});
+			}
 		});
-	})
+
+	});
 
 	server.get('/status', function (req, res) {
 		try {
@@ -164,17 +178,14 @@ function run() {
 
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
-
 	pushStatus(true);
 	setInterval(pushStatus, 10000);
-
-
 }
 
 function promptLogin() {
 	return prompt({
 		title: 'Apitoken',
-		label: 'Apitoken (Settings->API)',
+		label: 'Apitoken (Settings->Users)',
 		width: 550,
 		height: 150,
 		value: '',
@@ -255,26 +266,6 @@ function getStatus() {
 		hostname,
 		ts
 	};
-}
-
-// https://stackoverflow.com/questions/49650784/printing-a-pdf-file-with-electron-js
-function printPDF(filename, printer, options) {
-	let cmd;
-	log.info(options);
-	switch (os.platform()) {
-		case 'darwin':
-		case 'linux':
-			cmd = `lp "${filename}" -d "${printer.name}" -n ${options.copies || 1} ${options.cmdArguments || ''}`;
-			break
-		case 'win32':
-			const pdfToPrinter = path.join(__dirname, 'assets', 'PDFToPrinter.exe').replace('app.asar', 'app.asar.unpacked')
-			cmd = `"${pdfToPrinter}" "${filename}" "${printer.name}"`;
-			break;
-		default:
-			log.error('Platform not supported.');
-	}
-	log.info(cmd);
-	return cmdPromise(cmd);
 }
 
 function isQuitting() {

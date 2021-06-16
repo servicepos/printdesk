@@ -1,23 +1,22 @@
 {
   "name": "printdesk",
-  "version": "1.51.0-no-autoupdate",
+  "version": "1.61.0",
   "productName": "Printdesk",
   "description": "Hardware bridge for ServicePOS",
   "main": "main.js",
   "scripts": {
     "dev": "cross-env ELECTRON_IS_DEV=1 electron .",
     "build": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos",
+    "build-win": "cross-env ELECTRON_IS_DEV=0 electron-builder --win",
     "pack": "cross-env ELECTRON_IS_DEV=1 electron-builder --win --macos --dir",
-    "publish": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos -p always"
+    "publish": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos -p always",
+    "publish-win": "cross-env ELECTRON_IS_DEV=0 electron-builder --win -p always"
   },
   "repository": "https://github.com/servicepos/printdesk",
   "build": {
     "appId": "com.servicepos.printdesk",
     "asarUnpack": [
-      "assets/PDFtoPrinter.exe",
-      "assets/BamdeskMint.exe",
-      "assets/BamdeskMintTCP.exe",
-      "assets/PDF-XChange Viewer Settings.dat"
+      "assets/BamdeskMint.exe"
     ],
     "mac": {
       "icon": "assets/servicepos.png"
@@ -44,15 +43,14 @@
   },
   "postinstall": "electron-builder install-app-deps",
   "author": "ServicePOS",
-  "license": "CC0-1.0",
   "devDependencies": {
-    "cross-env": "^5.2.1",
-    "electron": "^5.0.1",
-    "electron-builder": "^20.44.4",
-    "electron-builder-squirrel-windows": "^20.44.0",
+    "cross-env": "^7.0.3",
+    "electron": "^9.4.4",
+    "electron-builder": "^22.11.7",
+    "electron-builder-squirrel-windows": "^22.11.7",
     "electron-installer-squirrel-windows": "^1.3.0",
     "electron-installer-zip": "^0.1.2",
-    "electron-reloader": "^0.3.0"
+    "electron-reloader": "^1.2.1"
   },
   "dependencies": {
     "auto-launch": "^5.0.5",
@@ -60,18 +58,18 @@
     "command-exists": "^1.2.9",
     "cors": "^2.8.5",
     "electron-is-dev": "^1.2.0",
-    "electron-log": "^3.0.9",
-    "electron-prompt": "^1.5.1",
+    "electron-log": "^4.3.5",
+    "electron-prompt": "^1.6.2",
     "electron-squirrel-startup": "^1.0.0",
-    "electron-store": "^3.3.0",
+    "electron-store": "^6.0.1",
     "express": "^4.17.1",
     "ip": "^1.1.5",
     "node-ip": "^0.1.2",
-    "node-machine-id": "^1.1.10",
+    "node-machine-id": "^1.1.12",
     "open-file-explorer": "^1.0.2",
     "ps-node": "^0.1.6",
-    "request": "^2.88.0",
-    "tmp": "^0.1.0",
+    "request": "^2.88.2",
+    "tmp": "^0.2.1",
     "update-electron-app": "^1.5.0"
   }
 }
