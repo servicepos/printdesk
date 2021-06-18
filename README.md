@@ -6,7 +6,7 @@ Please be sure everything works. Payment devices will break and all hell will br
 
 - Get certifcates from password1
 - Update version no in package.json
-- `yarn run publish`
+- `npm run publish`
 - Goto https://github.com/servicepos/printdesk/releases and test the build
 - When sure everything works: publish draft release (click edit). Printdesk will now slowly auto update.
 - To rollback mark the lastest release as prerelease. Autoupdate rollback can take hours. Happy phoning! :D 
