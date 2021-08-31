@@ -1,8 +1,9 @@
 name: Deploy /docs site to GitHub Pages
 on:
   push:
-    - master
-    - main
+    branches:
+      - master
+      - main
 jobs:
   build:
     defaults:
