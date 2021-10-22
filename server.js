@@ -20,12 +20,15 @@ const port = 43594;
 const bamdesk = require('./bamdesk.js');
 const openExplorer = require('open-file-explorer');
 const crashReporter = require('electron').crashReporter;
+const fetch = require('electron-fetch').default; 
 
 let hiddenWindow;
 let iconpath;
 let tray;
 let deviceStatus;
-
+let pushStatusInterval;
+let lastSettingsReceivedTime = 0;
+let lastPushedPrinterTime = 0;
 
 if (os.platform() === 'win32')
   iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
@@ -170,7 +173,16 @@ function run() {
 
 	server.post('/apitoken', function (req, res) {
 		const payload = req.body.payload;
-		store.set('apitoken', payload);
+		const currentApitoken = store.get('apitoken');
+
+		if (currentApitoken != payload) {
+			store.set('apitoken', payload);
+
+			/* force refresh of printers and settings */
+			lastSettingsReceivedTime = 0;
+			settingsLastReceived = 0;
+		}
+
 		res.status(200);
 		res.send();
 	})
@@ -179,7 +191,122 @@ function run() {
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
 	pushStatus(true);
-	setInterval(pushStatus, 10000);
+	pushStatusInterval = setInterval(pushStatus, 10000);
+
+}
+
+async function getStoreAndDeviceSettingsLoop() {
+
+	let storeSettings;
+ 
+	while(true){
+		const apitoken = store.get('apitoken');
+		// Gets storesettings once every 5 minutes, in order to relax the endpoint
+		// If we get an authorization error, we reset timer and try again when we get a new apitoken
+		const refreshTooOldSettings = (lastSettingsReceivedTime + 5*60*1000) < new Date().getTime();
+		if (apitoken && refreshTooOldSettings){
+			const headers = { 'Authorization': 'Bearer ' + apitoken };
+			const result = await fetch(`${config.servicepos_url}/api/settings`, {
+				method: 'GET',
+				headers,
+			}).then((result) => {
+				if (result && result.status == 200) {
+					return result;
+				}
+
+				if (result && result.status == 401) {
+					// removing apitoken since it is no longer valid
+					store.set('apitoken', "");
+					return null;
+				}
+			}).catch((err) => {
+				log.info(err);
+			});
+			
+			if (result) {
+				storeSettings = await result.json();
+				storeSettings.featureFlags = storeSettings.featureFlags.reduce((p, c) => {
+					p[c.key] = c.value;
+					return p;
+				}, {});
+				lastSettingsReceivedTime = new Date().getTime();
+				setTrayMenu({store: storeSettings.store});
+			} else {
+				storeSettings = null;
+			}
+		}
+
+		// Gets bamdesk device for the store
+		if (apitoken && storeSettings){
+			await getBamdeskDevice(storeSettings);
+		}
+
+		await sleep(10000);
+	}
+
+}
+
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function getBamdeskDevice(storeSettings) {
+
+	const status = getStatus();
+
+	return fetch(`${config.bamdesk_url}/bamdesk/deviceInfo/${storeSettings.store.id}/${status.deviceid}`, {method: 'GET'})
+		.then(res => res.json())
+		.then((body) => {
+			setTrayMenu({store: storeSettings.store, bamdeskdevice: body ? body : null});
+	
+			if (body) {
+				log.info('pulled status', body);
+				bamdesk.keepAlive(body.id ? body : null, storeSettings.featureFlags);
+			}
+		}).catch((err) => {
+			log.error(err);
+	});
+}
+
+
+async function pushPrintersLoop() {
+
+	let lastPushedPrinterJSON = '';
+
+	while(true){
+
+		const apitoken = store.get('apitoken');
+
+		const status = getStatus();
+		const refreshDisconnectedPrinters = (lastPushedPrinterTime + 5*60*1000) < new Date().getTime();
+		// strinify object in order to compare previous settings
+		const statusJSON = JSON.stringify({...status, ts: null});
+		// no reason to update prints if the current settings are the same as previous
+		// but to be sure that disconnected printers are registered we force push printers each 5 mintues
+		if (apitoken && (refreshDisconnectedPrinters || statusJSON != lastPushedPrinterJSON)){
+			lastPushedPrinterJSON = statusJSON;
+
+			const headers = { 'apitoken': apitoken };
+			await fetch(`${config.servicepos_url}/webbackend/api/PrintDesk/pushPrinters`, {
+				method: 'POST',
+				body: JSON.stringify({status: status}),
+				headers,
+			}).then(res => {
+				if (res && res.status == 200){
+					lastPushedPrinterTime = new Date().getTime();
+				}
+				if (res && res.status == 401) {
+					// relax - invalid apitoken
+					store.set('apitoken', "");
+				}
+			}).catch(err => {
+					log.error(err);
+			});
+		}
+
+		await sleep(10000);
+	}
+
 }
 
 function promptLogin() {
@@ -229,6 +356,15 @@ function pushStatus(askForToken) {
 		headers,
 	}, (error, res, body) => {
 		if (res && res.statusCode == 200) {
+			console.log(body.data)
+			if (body.data?.featureFlags?.new_bamdesk_environment) {
+				clearInterval(pushStatusInterval);
+				bamdesk.killProcess();
+				getStoreAndDeviceSettingsLoop();
+				pushPrintersLoop();
+				return;
+			}
+
 			log.info('pulled status', body.data);
 			setTrayMenu(body.data);
 			if (body.data) {

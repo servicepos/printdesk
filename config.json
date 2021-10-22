@@ -1,5 +1,6 @@
 {
-	"servicepos_url" : "https://app.deltateq.com"
+	"servicepos_url" : "https://app.deltateq.com",
+	"bamdesk_url" : "https://bamdesk.deltateq.com"
 }
 
 
