@@ -257,7 +257,7 @@ async function getBamdeskDevice(storeSettings) {
 	return fetch(`${config.bamdesk_url}/bamdesk/deviceInfo/${storeSettings.store.id}/${status.deviceid}`, {method: 'GET'})
 		.then(res => res.json())
 		.then((body) => {
-			setTrayMenu({store: storeSettings.store, bamdeskdevice: body ? body : null});
+			setTrayMenu({store: storeSettings.store, bamdeskdevice: body.id ? body : null});
 	
 			if (body) {
 				log.info('pulled status', body);
