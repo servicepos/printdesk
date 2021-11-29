@@ -54,15 +54,6 @@ async function keepAlive(device, ff) {
 	}
 }
 
-// remove ff new_bamdesk_environment 
-function killProcess() {
-	if (bamdeskProcess) {
-		bamdeskProcess.kill();
-		bamdeskProcess = null;
-		currentDevice = null;
-	}
-}
-
 /* start bamdesk if not running */
 async function run() {
 
@@ -76,7 +67,7 @@ async function run() {
 
 
 	const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
-	const url = featureFlags?.new_bamdesk_environment ? `${config.bamdesk_url}/bamdesk/bamdeskAPI` : `${config.servicepos_url}/webbackend/index.php`;
+	const url = `${config.bamdesk_url}/bamdesk/bamdeskAPI`;
 	let cmdparams = [url, currentDevice.id, currentDevice.secretkey]
 	if (currentDevice.ip) {
 		cmdparams.push(currentDevice.ip);
@@ -142,5 +133,4 @@ function monoEnv() {
 
 module.exports = {
 	keepAlive,
-	killProcess,
 }

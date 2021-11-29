@@ -25,8 +25,6 @@ const fetch = require('electron-fetch').default;
 let hiddenWindow;
 let iconpath;
 let tray;
-let deviceStatus;
-let pushStatusInterval;
 let lastSettingsReceivedTime = 0;
 let lastPushedPrinterTime = 0;
 
@@ -190,8 +188,8 @@ function run() {
 
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
-	pushStatus(true);
-	pushStatusInterval = setInterval(pushStatus, 10000);
+	getStoreAndDeviceSettingsLoop();
+	pushPrintersLoop();
 
 }
 
@@ -330,59 +328,6 @@ function promptLogin() {
 			}
 		})
 		.catch(log.error);
-}
-
-function pushStatus(askForToken) {
-
-	if (isQuitting()) {
-		log.info("status not send due to app quitting")
-		return;
-	}
-
-	const apitoken = store.get('apitoken');
-
-	if (!apitoken) {
-		log.info("apitoken not set")
-		return;
-	}
-
-	const headers = { 'apitoken': apitoken };
-	request.post(`${config.servicepos_url}/webbackend/index.php`, {
-		json: {
-			data: { status: getStatus() },
-			lib: 'PrintDesk',
-			method: 'deviceStatus',
-		},
-		headers,
-	}, (error, res, body) => {
-		if (res && res.statusCode == 200) {
-			console.log(body.data)
-			if (body.data?.featureFlags?.new_bamdesk_environment) {
-				clearInterval(pushStatusInterval);
-				bamdesk.killProcess();
-				getStoreAndDeviceSettingsLoop();
-				pushPrintersLoop();
-				return;
-			}
-
-			log.info('pulled status', body.data);
-			setTrayMenu(body.data);
-			if (body.data) {
-				deviceStatus = body.data;
-				bamdesk.keepAlive(body.data.bamdeskdevice, body.data.featureFlags);
-			}
-		} else if (res && res.statusCode == 401 && askForToken) {
-			/* retry login */
-			promptLogin().then(_ => {
-				pushStatus(askForToken);
-			})
-			return
-		}
-		if (error) {
-			log.error(error)
-			return
-		}
-	})
 }
 
 function getStatus() {
