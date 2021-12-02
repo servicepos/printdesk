@@ -67,7 +67,7 @@ async function run() {
 
 
 	const bamdeskExec = path.join(__dirname, 'assets', 'BamdeskMint.exe').replace('app.asar', 'app.asar.unpacked')
-	const url = `${config.servicepos_url}/webbackend/index.php`;
+	const url = `${config.bamdesk_url}/bamdesk/bamdeskAPI`;
 	let cmdparams = [url, currentDevice.id, currentDevice.secretkey]
 	if (currentDevice.ip) {
 		cmdparams.push(currentDevice.ip);
