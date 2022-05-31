@@ -4,7 +4,6 @@ const os = require('os');
 const { app, Tray, Menu } = require('electron')
 const path = require('path')
 const log = require('electron-log');
-const request = require('request')
 const isDev = require('electron-is-dev');
 const config = isDev ? require(path.join(__dirname, 'config-dev.json')) : require(path.join(__dirname, 'config.json'));
 const { BrowserWindow } = require('electron')
@@ -124,14 +123,13 @@ function run() {
 			return;
 		}
 		const payload = req.body.payload;
-		const pdfTmpName = `${tmp.fileSync().name}.pdf`;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
 		fs.writeFileSync(htmlTmpName, payload.html);
 		const pdfWindow = new BrowserWindow({width: 400, height: 400, show : false, webPreferences : { javascript : false, worldSafeExecuteJavaScript: true }})
 		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
-		log.info('Print with chrome')
+		log.info('Print with chrome');
 		const marginType = payload.pdfOptions.marginType == 0 ? 'default' : 'none';
 		let options = {
 			...payload.pdfOptions,
