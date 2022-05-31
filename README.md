@@ -14,7 +14,7 @@ Please be sure everything works. Payment devices will break and all hell will br
 # Publish for windows
 Instead of export use: 
 - $Env:CSC_LINK="[full path to codesigningcertificate.pfx]"
-- $Env:CSC_KEY_PASWORD="password"
+- $Env:CSC_KEY_PASSWORD="password"
 
 Make sure to generate a GH_TOKEN and set it as an environment:
 - $Env:GH_TOKEN="token"
