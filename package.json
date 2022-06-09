@@ -12,7 +12,7 @@
     "publish": "cross-env ELECTRON_IS_DEV=0 electron-builder --win --macos -p always",
     "publish-win": "cross-env ELECTRON_IS_DEV=0 electron-builder --win -p always",
     "publish-mac": "cross-env ELECTRON_IS_DEV=0 electron-builder --macos -p always",
-    "publish-ci": "electron-builder -m -p always"
+    "publish-ci": "electron-builder -w -p always"
   },
   "repository": "https://github.com/servicepos/printdesk",
   "build": {
