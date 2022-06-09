@@ -4,6 +4,12 @@ on:
     branches:
       - master
 
+env:
+  ELECTRON_IS_DEV: 0
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
+  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
 jobs:
   release:
     runs-on: macos-latest
@@ -19,11 +25,15 @@ jobs:
           cache: 'npm'
       - run: npm ci
 
+      - name: Setup Certificates
+        run: |
+            echo $CSC_LINK | base64 --decode > certificate.p12 
+            security create-keychain -p GITHUB build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p GITHUB build.keychain
+            security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign;
+            security set-key-partition-list -S apple-tool:,apple: -s -k GITHUB build.keychain
+            rm -rf *.p12
+
       - name: publish
         run: npm run publish-ci
-
-        env:
-          ELECTRON_IS_DEV: 0
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
