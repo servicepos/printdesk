@@ -39,7 +39,7 @@ jobs:
         run: npm run publish-mac
 
   release-win:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
