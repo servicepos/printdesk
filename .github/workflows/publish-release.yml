@@ -39,7 +39,7 @@ jobs:
         run: npm run publish-mac
 
   release-win:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
 
     steps:
       - name: Checkout
@@ -48,7 +48,6 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt update
-          sudo apt-get install libllvm12:i386
           sudo apt-get install --no-install-recommends -y libopenjp2-tools wine32
       - name: Setup Node environment
         uses: actions/setup-node@v2
