@@ -45,7 +45,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
       - name: Install build dependencies
-        run: | 
+        run: |
+          sudo dpkg --add-architecture i386
           sudo apt update
           sudo apt-get install --no-install-recommends -y libopenjp2-tools wine32
       - name: Setup Node environment
