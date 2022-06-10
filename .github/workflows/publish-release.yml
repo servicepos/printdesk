@@ -9,6 +9,7 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
   CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+  KEYCHAIN_PASS: ${{ secrets.KEYCHAIN_PASS }}
 
 jobs:
   release-mac:
@@ -28,11 +29,11 @@ jobs:
       - name: Setup Certificates
         run: |
             echo $CSC_LINK | base64 --decode > certificate.p12 
-            security create-keychain -p GITHUB build.keychain
+            security create-keychain -p $KEYCHAIN_PASS build.keychain
             security default-keychain -s build.keychain
-            security unlock-keychain -p GITHUB build.keychain
+            security unlock-keychain -p $KEYCHAIN_PASS build.keychain
             security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign;
-            security set-key-partition-list -S apple-tool:,apple: -s -k GITHUB build.keychain
+            security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASS build.keychain
             rm -rf *.p12
 
       - name: publish
