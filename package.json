@@ -1,8 +1,8 @@
 {
   "name": "printdesk",
-  "version": "1.62.4",
+  "version": "1.62.5",
   "productName": "Printdesk",
-  "description": "Hardware bridge for ServicePOS",
+  "description": "Hardware bridge for Servicepos",
   "main": "main.js",
   "scripts": {
     "dev": "cross-env ELECTRON_IS_DEV=1 electron .",

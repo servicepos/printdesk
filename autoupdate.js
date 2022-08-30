@@ -13,3 +13,13 @@ electron.autoUpdater.once('update-downloaded', (ev, err) => {
 	err && log.error(err)
 	electron.autoUpdater.quitAndInstall();
 })
+
+electron.autoUpdater.once('checking-for-update', (ev) => {
+	log.info('checking-for-update');
+	log.info(ev)
+})
+
+electron.autoUpdater.once('error', (error) => {
+	log.error('Auto update error');
+	log.error(error)
+})
