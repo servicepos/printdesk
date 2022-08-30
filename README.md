@@ -1,23 +1,21 @@
-# You can publish if you wanna
-`export CSC_LINK=~/codesigningcertificate.pfx`
-`export CSC_KEY_PASSWORD=pw`
+# How to release
 
-Please be sure everything works. Payment devices will break and all hell will break loose if Printdesk does not work.
 
-- Get certifcates from password1
-- Update version no in package.json
-- `npm run publish`
-- Goto https://github.com/servicepos/printdesk/releases and test the build
-- When sure everything works: publish draft release (click edit). Printdesk will now slowly auto update.
-- To rollback mark the lastest release as prerelease. Autoupdate rollback can take hours. Happy phoning! :D 
+# Test
+- Dont publish your test version
+- create a version without auto update. 
+- Increment package.json version number with autoupdate `1.x.y-no-autoupdate`
+- remove `require('./autoupdate')` from `main.js`
+- push to master
+- Wait for workflows to finish https://github.com/servicepos/printdesk/actions
+- Test draft release https://github.com/servicepos/printdesk/releases by manually downloading an installing on WIN and MacOS
+- **Dont publish this release**
+- Please clean up master
 
-# Publish for windows
-Instead of export use: 
-- $Env:CSC_LINK="[full path to codesigningcertificate.pfx]"
-- $Env:CSC_KEY_PASSWORD="password"
-
-Make sure to generate a GH_TOKEN and set it as an environment:
-- $Env:GH_TOKEN="token"
-
-More info can be found here on how you can generate token: https://docs.github.com/en/free-pro-team@latest/github/authenticating-to-github/creating-a-personal-access-token
-Only "repo" (full contron of private repositories) needs to be checked.
+# Release
+- Increment package.json version number `1.x.y`
+- Make sure auto update is activated. Check `require('./autoupdate')` can be seen in `main.js`
+- push to master
+- Wait for workflows to finish https://github.com/servicepos/printdesk/actions
+- Publish draft release in  https://github.com/servicepos/printdesk/releases
+	
