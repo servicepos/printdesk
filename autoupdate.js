@@ -4,7 +4,7 @@ const electron = require('electron')
 require('update-electron-app')({
 	logger: log,
 	updateInterval: '5 minutes',
-	repo: 'servicepos/printdesk',
+	repo: 'amatzen/printdesk',
 })
 
 electron.autoUpdater.once('update-downloaded', (ev, err) => {
