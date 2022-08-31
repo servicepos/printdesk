@@ -39,7 +39,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "amatzen",
+        "owner": "servicepos",
         "repo": "printdesk"
       }
     ]
