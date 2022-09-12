@@ -2,7 +2,7 @@
 	import DownloadButton from "./DownloadButton.svelte";
 	import { _ } from "svelte-i18n";
 
-	const year = 2021;
+	const year = new Date().getUTCFullYear();
 </script>
 
 <svelte:head>
