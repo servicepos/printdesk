@@ -12,7 +12,7 @@
         const { assets } = await request.json();
         console.log(assets);
 
-        MACOS_DOWNLOAD_LINK = assets.filter(asset => asset.name.endsWith(".dmg"))[0].browser_download_url;
+        MACOS_DOWNLOAD_LINK = assets.filter(asset => asset.name.endsWith(".dmg") && asset.name.includes("x64"))[0].browser_download_url;
         WINDOWS_DOWNLOAD_LINK = assets.filter(asset => asset.name.endsWith(".exe"))[0].browser_download_url;
     }
 
