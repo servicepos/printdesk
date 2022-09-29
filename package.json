@@ -17,6 +17,7 @@
   "repository": "https://github.com/servicepos/printdesk",
   "build": {
     "appId": "com.servicepos.printdesk",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "asarUnpack": [
       "assets/BamdeskMint.exe"
     ],
@@ -26,6 +27,7 @@
       "target": {
         "target": "default",
         "arch": [
+          "arm64",
           "x64"
         ]
       }
