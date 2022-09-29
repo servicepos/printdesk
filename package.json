@@ -22,7 +22,13 @@
     ],
     "mac": {
       "icon": "assets/servicepos.png",
-      "requirements": "build/mac/requirements.rqset"
+      "requirements": "build/mac/requirements.rqset",
+      "target": {
+        "target": "default",
+        "arch": [
+          "x64"
+        ]
+      }
     },
     "protocols": {
       "name": "printdesk-protocol",
