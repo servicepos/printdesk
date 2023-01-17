@@ -28,14 +28,14 @@ let lastSettingsReceivedTime = 0;
 let lastPushedPrinterTime = 0;
 
 if (os.platform() === 'win32')
-  iconpath = path.join(__dirname, 'assets', 'servicepos.ico')
+  iconpath = path.join(__dirname, 'assets', 'customers1st.ico')
 else
-  iconpath = path.join(__dirname, 'assets', 'servicepos_16x16.png')
+  iconpath = path.join(__dirname, 'assets', 'customers1st_16x16.png')
 
 function setTrayMenu(status) {
   const items = [
     {
-      label :`ServicePOS ${app.getVersion()}`,
+      label :`Customers 1st ${app.getVersion()}`,
       enabled : false
     }
   ];
