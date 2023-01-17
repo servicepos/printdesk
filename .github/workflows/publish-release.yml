@@ -50,7 +50,7 @@ jobs:
           assets: '*.zip.blockmap'
 
   release-win:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
