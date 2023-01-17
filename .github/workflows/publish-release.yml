@@ -59,7 +59,7 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt update
-          sudo apt-get install --no-install-recommends -y libopenjp2-tools lib32z1 wine-stable wine32
+          sudo apt install --install-recommends -y libopenjp2-tools wine-stable wine32
       - name: Setup Node environment
         uses: actions/setup-node@v2
         with:
