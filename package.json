@@ -1,8 +1,8 @@
 {
   "name": "printdesk",
-  "version": "1.62.8",
+  "version": "1.62.9",
   "productName": "Printdesk",
-  "description": "Hardware bridge for Servicepos",
+  "description": "Hardware bridge for Customers 1st",
   "main": "main.js",
   "scripts": {
     "dev": "cross-env ELECTRON_IS_DEV=1 electron .",
@@ -22,7 +22,7 @@
       "assets/BamdeskMint.exe"
     ],
     "mac": {
-      "icon": "assets/servicepos.png",
+      "icon": "assets/customers1st.png",
       "requirements": "build/mac/requirements.rqset",
       "target": {
         "target": "default",
@@ -39,7 +39,7 @@
       ]
     },
     "win": {
-      "icon": "assets/servicepos.ico",
+      "icon": "assets/customers1st.ico",
       "target": [
         "squirrel"
       ]
@@ -53,7 +53,7 @@
     ]
   },
   "postinstall": "electron-builder install-app-deps",
-  "author": "ServicePOS",
+  "author": "Customers 1st",
   "devDependencies": {
     "cross-env": "^7.0.3",
     "electron": "^13.6.6",
