@@ -63,6 +63,7 @@
         padding: 16px 40px;
         border: 0;
         font-size: 14pt;
+        line-height: 32px;
         font-family: "Bw Gradual", sans-serif;
         border-radius: 40px;
         cursor: pointer;
