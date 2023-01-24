@@ -69,7 +69,7 @@
         cursor: pointer;
     }
     button:hover {
-        background: rgb(18, 18, 180);
+        background: rgb(0, 0, 200);
     }
 
     .muted {

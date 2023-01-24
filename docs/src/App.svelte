@@ -14,7 +14,7 @@
 <main>
 	<header>
 		<a href="https://www.c1st.com/">
-			<img src="logo.svg" alt="Servicepos" height="30px">
+			<img src="logo.svg" alt="Customers 1st" height="30px">
 		</a>
 	</header>
 	<h1>{$_('page_title')}</h1>
