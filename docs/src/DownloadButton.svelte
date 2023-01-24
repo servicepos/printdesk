@@ -60,10 +60,11 @@
         background: rgb(0,0,255);
         color: #fff;
         display: inline-block;
-        padding: 1rem 2rem;
+        padding: 16px 40px;
         border: 0;
         font-size: 14pt;
-        border-radius: 4px;
+        font-family: "Bw Gradual", sans-serif;
+        border-radius: 40px;
         cursor: pointer;
     }
     button:hover {
