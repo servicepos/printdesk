@@ -2,6 +2,8 @@
 	import DownloadButton from "./DownloadButton.svelte";
 	import { _ } from "svelte-i18n";
 
+	import '../public/fonts/BwGradual.css';
+
 	const year = new Date().getUTCFullYear();
 </script>
 
@@ -23,9 +25,9 @@
 	</footer>
 </main>
 
-<style>
+<style global>
 	main {
-		font-family: sans-serif;
+		font-family: 'Bw Gradual', sans-serif;
 
 		width: 1200px;
 		margin: 0 auto;
