@@ -19,7 +19,7 @@
 	<p>{$_('lead_message')}</p>
 	<DownloadButton/>
 	<footer>
-		&copy; {year} Servicepos ApS • Kochsgade 31C, 3. sal, 5000 Odense C • CVR: 35802843
+		&copy; {year} C 1ST ApS • Kochsgade 31C, 3. sal, 5000 Odense C • CVR: 35802843
 	</footer>
 </main>
 
