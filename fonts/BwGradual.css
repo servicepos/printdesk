@@ -1,0 +1,11 @@
+@font-face {
+    font-family: "Bw Gradual";
+    font-weight: normal;
+    src: url("/fonts/BwGradual-Regular.woff2") format("woff");
+}
+
+@font-face {
+    font-family: "Bw Gradual";
+    font-weight: bold;
+    src: url("/fonts/BwGradual-Bold.woff2") format("woff");
+}
