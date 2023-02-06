@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'docs/**'
 
 env:
   ELECTRON_IS_DEV: 0
