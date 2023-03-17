@@ -187,10 +187,7 @@ function run() {
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
 	getStoreAndDeviceSettingsLoop();
-	console.log('starting push printers loop')
 	pushPrintersLoop();
-	console.log('fisnihed starting push printers loop')
-
 }
 
 async function getStoreAndDeviceSettingsLoop() {
