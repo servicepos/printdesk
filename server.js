@@ -156,14 +156,14 @@ function run() {
 
 	});
 
-	server.get('/status', function (req, res) {
+	server.get('/status', async function (req, res) {
 		try {
 			if (isQuitting()) throw "app is quitting"
-			const status = getStatus();
-			res.send({ payload: status });
+			const status = await getStatus();
+			res.send({payload: status});
 		} catch (e) {
 			res.status(500);
-			res.send({ paylod: res });
+			res.send({paylod: res});
 		}
 	});
 
@@ -187,7 +187,9 @@ function run() {
 	server.listen(port, () => log.info(`listening on port ${port}!`))
 
 	getStoreAndDeviceSettingsLoop();
+	console.log('starting push printers loop')
 	pushPrintersLoop();
+	console.log('fisnihed starting push printers loop')
 
 }
 
@@ -248,7 +250,7 @@ function sleep(ms) {
 
 async function getBamdeskDevice(storeSettings) {
 
-	const status = getStatus();
+	const status = await getStatus();
 
 	return fetch(`${config.bamdesk_url}/bamdesk/deviceInfo/${storeSettings.store.id}/${status.deviceid}`, {method: 'GET'})
 		.then(res => res.json())
@@ -273,7 +275,7 @@ async function pushPrintersLoop() {
 
 		const apitoken = store.get('apitoken');
 
-		const status = getStatus();
+		const status = await getStatus();
 		const refreshDisconnectedPrinters = (lastPushedPrinterTime + 5*60*1000) < new Date().getTime();
 		// strinify object in order to compare previous settings
 		const statusJSON = JSON.stringify({...status, ts: null});
@@ -328,11 +330,11 @@ function promptLogin() {
 		.catch(log.error);
 }
 
-function getStatus() {
+async function getStatus() {
 	const ip = ipmodule.address();
-	const printers = hiddenWindow.webContents.getPrinters();
+	const printers = await hiddenWindow.webContents.getPrintersAsync();
 	const platform = os.platform();
-	const deviceid = machineid.machineIdSync({ original: true })
+	const deviceid = machineid.machineIdSync({original: true})
 	const ts = (new Date()).toISOString()
 	const hostname = os.hostname()
 
