@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - update_electron
     paths-ignore:
       - 'docs/**'
 
