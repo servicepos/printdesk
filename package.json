@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.63.0-no-autoupdate",
+  "version": "1.63.0",
   "productName": "Printdesk",
   "description": "Hardware bridge for Customers 1st",
   "main": "main.js",
