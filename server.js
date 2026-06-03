@@ -124,7 +124,11 @@ function run() {
 		}
 		const payload = req.body.payload;
 		const htmlTmpName = `${tmp.fileSync().name}.html`;
-		fs.writeFileSync(htmlTmpName, payload.html);
+		/* Write the HTML as a UTF-8 Buffer rather than a raw string. Electron 42's
+		   bundled Node 24 aborts with a fatal MaybeStackBuffer assertion when writing
+		   certain multi-byte strings (receipts contain æøå/€), which hard-crashes the
+		   whole app on print. Passing a Buffer bypasses the string->utf8 conversion. */
+		fs.writeFileSync(htmlTmpName, Buffer.from(String(payload.html), 'utf8'));
 		const pdfWindow = new BrowserWindow({width: 400, height: 400, show : false, webPreferences : { javascript : false }})
 		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
 		log.info(payload.pdfOptions);
