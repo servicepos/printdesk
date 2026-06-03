@@ -19,10 +19,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Setup Node environment
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: 'npm'
@@ -56,7 +56,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       - name: Install build dependencies
         run: |
           sudo dpkg --add-architecture i386
@@ -64,7 +64,7 @@ jobs:
           sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ jammy main'
           sudo apt update && sudo apt install --install-recommends winehq-stable wine32
       - name: Setup Node environment
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: 'npm'
