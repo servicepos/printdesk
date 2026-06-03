@@ -44,6 +44,9 @@
         "squirrel"
       ]
     },
+    "squirrelWindows": {
+      "iconUrl": "https://raw.githubusercontent.com/servicepos/printdesk/master/assets/customers1st.ico"
+    },
     "publish": [
       {
         "provider": "github",
