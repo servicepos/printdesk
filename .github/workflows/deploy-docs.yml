@@ -33,6 +33,7 @@ jobs:
         with:
           name: build
           path: docs/public
+          include-hidden-files: true
 
   deploy:
     needs: build
