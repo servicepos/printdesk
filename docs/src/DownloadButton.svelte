@@ -4,20 +4,20 @@
 
     let OS;
 
-    let MACOS_DOWNLOAD_LINK;
+    let MACOS_DOWNLOAD_LINK;        // Apple Silicon (arm64) — default on Mac
+    let MACOS_INTEL_DOWNLOAD_LINK;  // Intel (x64) — fallback
     let WINDOWS_DOWNLOAD_LINK;
 
     const getAssets = async () => {
         const request = await fetch("https://api.github.com/repos/servicepos/printdesk/releases/latest");
         const { assets } = await request.json();
-        console.log(assets);
 
-        MACOS_DOWNLOAD_LINK = assets.filter(asset => asset.name.endsWith(".dmg") && asset.name.includes("x64"))[0].browser_download_url;
+        MACOS_DOWNLOAD_LINK = assets.filter(asset => asset.name.endsWith(".dmg") && asset.name.includes("arm64"))[0].browser_download_url;
+        MACOS_INTEL_DOWNLOAD_LINK = assets.filter(asset => asset.name.endsWith(".dmg") && asset.name.includes("x64"))[0].browser_download_url;
         WINDOWS_DOWNLOAD_LINK = assets.filter(asset => asset.name.endsWith(".exe"))[0].browser_download_url;
     }
 
     onMount(() => {
-        console.log(navigator.platform);
         if (navigator.platform.startsWith("Mac")) {
             OS = "Mac";
         } else {
@@ -27,24 +27,14 @@
         getAssets();
     });
 
-    const download = () => {
-        if (OS === "Mac") {
-            window.location.href = MACOS_DOWNLOAD_LINK;
-        } else {
-            window.location.href = WINDOWS_DOWNLOAD_LINK;
-        }
-    }
-
-    const downloadOpposite = () => {
-        if (OS === "Windows") {
-            window.location.href = MACOS_DOWNLOAD_LINK;
-        } else {
-            window.location.href = WINDOWS_DOWNLOAD_LINK;
-        }
-    }
+    const go = (url) => { if (url) window.location.href = url; };
 
     const handleClick = () => {
-        download();
+        if (OS === "Mac") {
+            go(MACOS_DOWNLOAD_LINK);
+        } else {
+            go(WINDOWS_DOWNLOAD_LINK);
+        }
     }
 </script>
 
@@ -52,7 +42,12 @@
     {$_('download')} {OS}
 </button>
 <p class="muted">
-    <a role="button" href="#" on:click="{downloadOpposite}" class="muted">{$_('download')} {OS === "Mac" ? "Windows" : "Mac"}</a>
+    {#if OS === "Mac"}
+        <a role="button" href="#" on:click|preventDefault="{() => go(MACOS_INTEL_DOWNLOAD_LINK)}" class="muted">{$_('download')} Mac (Intel)</a><br />
+        <a role="button" href="#" on:click|preventDefault="{() => go(WINDOWS_DOWNLOAD_LINK)}" class="muted">{$_('download')} Windows</a>
+    {:else}
+        <a role="button" href="#" on:click|preventDefault="{() => go(MACOS_DOWNLOAD_LINK)}" class="muted">{$_('download')} Mac</a>
+    {/if}
 </p>
 
 <style>
