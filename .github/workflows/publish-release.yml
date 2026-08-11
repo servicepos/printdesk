@@ -132,7 +132,8 @@ jobs:
             $out | Write-Host
             Write-Host "::endgroup::"
             if ($code -ne 0) { throw "signature verification failed: $target" }
-            if ($out -notmatch 'The signature is timestamped') { throw "signature is not timestamped: $target" }
+            # -notmatch filters arrays instead of returning a boolean, so join first
+            if (($out -join "`n") -notmatch 'The signature is timestamped') { throw "signature is not timestamped: $target" }
           }
 
       - name: Upload win installer
