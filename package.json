@@ -23,7 +23,7 @@
     ],
     "mac": {
       "icon": "assets/customers1st.png",
-      "requirements": "build/mac/requirements.rqset",
+      "notarize": true,
       "target": {
         "target": "default",
         "arch": [
