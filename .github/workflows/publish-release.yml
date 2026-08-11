@@ -5,17 +5,29 @@ on:
       - master
     paths-ignore:
       - 'docs/**'
+  # Only pushes to master publish. Pull requests and manual runs build the same
+  # installers and upload them as workflow artifacts, so a release can be tested
+  # before it goes out to customers.
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+  workflow_dispatch:
 
 env:
   ELECTRON_IS_DEV: 0
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
-  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-  KEYCHAIN_PASS: ${{ secrets.KEYCHAIN_PASS }}
 
 jobs:
   release-mac:
     runs-on: macos-latest
+
+    # macOS-only signing config. Kept out of the workflow-level env so the
+    # Windows job cannot pick up CSC_LINK and sign with the p12 instead of
+    # Azure Artifact Signing.
+    env:
+      CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      KEYCHAIN_PASS: ${{ secrets.KEYCHAIN_PASS }}
 
     steps:
       - name: Checkout
@@ -30,7 +42,7 @@ jobs:
 
       - name: Setup Certificates
         run: |
-            echo $CSC_LINK | base64 --decode > certificate.p12 
+            echo $CSC_LINK | base64 --decode > certificate.p12
             security create-keychain -p $KEYCHAIN_PASS build.keychain
             security default-keychain -s build.keychain
             security unlock-keychain -p $KEYCHAIN_PASS build.keychain
@@ -38,13 +50,29 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASS build.keychain
             rm -rf *.p12
 
+      - name: build (no publish)
+        if: github.event_name != 'push'
+        run: npm run build-mac
+
+      - name: Upload mac installers
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: printdesk-mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
       - name: publish
+        if: github.event_name == 'push'
         run: npm run publish-mac
 
       - name: Get release tag
+        if: github.event_name == 'push'
         run: echo "GIT_TAG=v`$(echo node -p "require('./package.json').version")`" >> $GITHUB_ENV
 
       - name: Delete blockmap asset
+        if: github.event_name == 'push'
         uses: mknejp/delete-release-assets@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -52,22 +80,40 @@ jobs:
           assets: '*.zip.blockmap'
 
   release-win:
-    runs-on: ubuntu-22.04
+    # Must be a Windows runner: electron-builder drives Azure Artifact Signing
+    # through the TrustedSigning PowerShell module, which it can only run on a
+    # Windows host (on Linux it looks for a Parallels VM).
+    runs-on: windows-latest
+
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install build dependencies
-        run: |
-          sudo dpkg --add-architecture i386
-          wget -O - https://dl.winehq.org/wine-builds/winehq.key | sudo apt-key add -
-          sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ jammy main'
-          sudo apt update && sudo apt install --install-recommends winehq-stable wine32
       - name: Setup Node environment
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: 'npm'
       - run: npm ci
+
+      - name: build (no publish)
+        if: github.event_name != 'push'
+        run: npm run build-win
+
+      - name: Upload win installer
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: printdesk-win
+          path: |
+            dist/squirrel-windows/*.exe
+            dist/squirrel-windows/*.nupkg
+            dist/squirrel-windows/RELEASES
+
       - name: publish
+        if: github.event_name == 'push'
         run: npm run publish-win
