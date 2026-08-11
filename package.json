@@ -1,6 +1,6 @@
 {
   "name": "printdesk",
-  "version": "1.64.0",
+  "version": "1.65.0",
   "productName": "Printdesk",
   "description": "Hardware bridge for Customers 1st",
   "main": "main.js",
@@ -23,7 +23,7 @@
     ],
     "mac": {
       "icon": "assets/customers1st.png",
-      "requirements": "build/mac/requirements.rqset",
+      "notarize": true,
       "target": {
         "target": "default",
         "arch": [
