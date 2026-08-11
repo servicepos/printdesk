@@ -5,17 +5,36 @@ on:
       - master
     paths-ignore:
       - 'docs/**'
+  # Only pushes to master publish. Pull requests and manual runs build the same
+  # installers and upload them as workflow artifacts, so a release can be tested
+  # before it goes out to customers.
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+  workflow_dispatch:
 
 env:
   ELECTRON_IS_DEV: 0
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
-  CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-  KEYCHAIN_PASS: ${{ secrets.KEYCHAIN_PASS }}
 
 jobs:
   release-mac:
     runs-on: macos-latest
+
+    # macOS-only signing config. Kept out of the workflow-level env so the
+    # Windows job cannot pick up CSC_LINK and sign with the p12 instead of
+    # Azure Artifact Signing.
+    env:
+      CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      KEYCHAIN_PASS: ${{ secrets.KEYCHAIN_PASS }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      # electron-builder skips macOS signing on pull request builds by default,
+      # which would make a release candidate untestable. Fork pull requests get
+      # no secrets from GitHub, so only branches pushed by people who already
+      # have write access can reach the certificate.
+      CSC_FOR_PULL_REQUEST: true
 
     steps:
       - name: Checkout
@@ -30,7 +49,7 @@ jobs:
 
       - name: Setup Certificates
         run: |
-            echo $CSC_LINK | base64 --decode > certificate.p12 
+            echo $CSC_LINK | base64 --decode > certificate.p12
             security create-keychain -p $KEYCHAIN_PASS build.keychain
             security default-keychain -s build.keychain
             security unlock-keychain -p $KEYCHAIN_PASS build.keychain
@@ -38,13 +57,58 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASS build.keychain
             rm -rf *.p12
 
+      # notarytool wants a file path, so the App Store Connect key is written to
+      # disk and APPLE_API_KEY points at it.
+      - name: Setup notarization API key
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          echo "$APPLE_API_KEY_P8" | base64 --decode > "$RUNNER_TEMP/asc-api-key.p8"
+          echo "APPLE_API_KEY=$RUNNER_TEMP/asc-api-key.p8" >> $GITHUB_ENV
+
+      - name: build (no publish)
+        if: github.event_name != 'push'
+        run: npm run build-mac
+
       - name: publish
+        if: github.event_name == 'push'
         run: npm run publish-mac
 
+      # Signing failures are only warnings to electron-builder, so assert the
+      # result: signed with a valid identity, accepted by Gatekeeper, and with a
+      # stapled notarization ticket so offline installs work too.
+      - name: Verify signature and notarization
+        # Skipped on fork pull requests, which have no access to the certificate.
+        if: env.CSC_LINK != ''
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apps=(dist/*/Printdesk.app)
+          if [ ${#apps[@]} -eq 0 ]; then echo "no built app bundles found"; exit 1; fi
+          for app in "${apps[@]}"; do
+            echo "::group::verify $app"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            codesign -dv --verbose=4 "$app" 2>&1 | grep -E 'Authority|TeamIdentifier|flags'
+            spctl --assess --type exec --verbose=4 "$app"
+            xcrun stapler validate "$app"
+            echo "::endgroup::"
+          done
+
+      - name: Upload mac installers
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: printdesk-mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
       - name: Get release tag
+        if: github.event_name == 'push'
         run: echo "GIT_TAG=v`$(echo node -p "require('./package.json').version")`" >> $GITHUB_ENV
 
       - name: Delete blockmap asset
+        if: github.event_name == 'push'
         uses: mknejp/delete-release-assets@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -52,22 +116,68 @@ jobs:
           assets: '*.zip.blockmap'
 
   release-win:
-    runs-on: ubuntu-22.04
+    # Must be a Windows runner: electron-builder drives Azure Artifact Signing
+    # through the TrustedSigning PowerShell module, which it can only run on a
+    # Windows host (on Linux it looks for a Parallels VM).
+    runs-on: windows-latest
+
+    env:
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install build dependencies
-        run: |
-          sudo dpkg --add-architecture i386
-          wget -O - https://dl.winehq.org/wine-builds/winehq.key | sudo apt-key add -
-          sudo apt-add-repository 'deb https://dl.winehq.org/wine-builds/ubuntu/ jammy main'
-          sudo apt update && sudo apt install --install-recommends winehq-stable wine32
       - name: Setup Node environment
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: 'npm'
       - run: npm ci
+
+      - name: build (no publish)
+        if: github.event_name != 'push'
+        run: npm run build-win
+
       - name: publish
+        if: github.event_name == 'push'
         run: npm run publish-win
+
+      # Fails the build if a signature is missing, untrusted or not
+      # timestamped, so a broken signing setup can't reach a release. The
+      # timestamp check is not optional: Azure Artifact Signing certificates
+      # are only valid for a few days, so an untimestamped signature stops
+      # validating almost immediately after release.
+      - name: Verify Authenticode signatures
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem -ErrorAction SilentlyContinue -Path `
+            "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe", `
+            "$env:LOCALAPPDATA\TrustedSigning\*\*\bin\x64\signtool.exe" |
+            Sort-Object FullName | Select-Object -Last 1
+          if (-not $signtool) { throw "signtool.exe not found on this runner" }
+          $targets = @(
+            "dist\win-unpacked\Printdesk.exe",
+            "dist\win-unpacked\resources\app.asar.unpacked\assets\BamdeskMint.exe"
+          ) + (Get-ChildItem "dist\squirrel-windows\*.exe" | ForEach-Object FullName)
+          foreach ($target in $targets) {
+            Write-Host "::group::verify $target"
+            $out = & $signtool.FullName verify /pa /v $target 2>&1
+            $code = $LASTEXITCODE
+            $out | Write-Host
+            Write-Host "::endgroup::"
+            if ($code -ne 0) { throw "signature verification failed: $target" }
+            # -notmatch filters arrays instead of returning a boolean, so join first
+            if (($out -join "`n") -notmatch 'The signature is timestamped') { throw "signature is not timestamped: $target" }
+          }
+
+      - name: Upload win installer
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: printdesk-win
+          path: |
+            dist/squirrel-windows/*.exe
+            dist/squirrel-windows/*.nupkg
+            dist/squirrel-windows/RELEASES

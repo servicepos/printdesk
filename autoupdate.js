@@ -1,5 +1,14 @@
 const log = require('electron-log');
 const electron = require('electron')
+const isDev = require('electron-is-dev');
+
+// Set PRINTDESK_DISABLE_UPDATER=1 to launch a build without the updater, e.g.
+// when verifying a release candidate. Use this instead of commenting out the
+// code below, so the build under test stays identical to the published one.
+if (isDev || process.env.PRINTDESK_DISABLE_UPDATER) {
+	log.info(`auto update disabled (isDev=${isDev}, PRINTDESK_DISABLE_UPDATER=${process.env.PRINTDESK_DISABLE_UPDATER || 'unset'})`);
+	return;
+}
 
 require('update-electron-app')({
 	logger: log,
