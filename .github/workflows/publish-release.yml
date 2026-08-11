@@ -30,6 +30,11 @@ jobs:
       KEYCHAIN_PASS: ${{ secrets.KEYCHAIN_PASS }}
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      # electron-builder skips macOS signing on pull request builds by default,
+      # which would make a release candidate untestable. Fork pull requests get
+      # no secrets from GitHub, so only branches pushed by people who already
+      # have write access can reach the certificate.
+      CSC_FOR_PULL_REQUEST: true
 
     steps:
       - name: Checkout
@@ -73,6 +78,8 @@ jobs:
       # result: signed with a valid identity, accepted by Gatekeeper, and with a
       # stapled notarization ticket so offline installs work too.
       - name: Verify signature and notarization
+        # Skipped on fork pull requests, which have no access to the certificate.
+        if: env.CSC_LINK != ''
         run: |
           set -euo pipefail
           shopt -s nullglob
