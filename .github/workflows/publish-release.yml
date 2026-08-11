@@ -104,6 +104,32 @@ jobs:
         if: github.event_name != 'push'
         run: npm run build-win
 
+      - name: publish
+        if: github.event_name == 'push'
+        run: npm run publish-win
+
+      # Fails the build if a signature is missing, untrusted or badly
+      # timestamped, so a broken signing setup can't reach a release.
+      - name: Verify Authenticode signatures
+        shell: pwsh
+        run: |
+          $signtool = Get-ChildItem -ErrorAction SilentlyContinue -Path `
+            "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe", `
+            "$env:LOCALAPPDATA\TrustedSigning\*\*\bin\x64\signtool.exe" |
+            Sort-Object FullName | Select-Object -Last 1
+          if (-not $signtool) { throw "signtool.exe not found on this runner" }
+          $targets = @(
+            "dist\win-unpacked\Printdesk.exe",
+            "dist\win-unpacked\resources\app.asar.unpacked\assets\BamdeskMint.exe"
+          ) + (Get-ChildItem "dist\squirrel-windows\*.exe" | ForEach-Object FullName)
+          foreach ($target in $targets) {
+            Write-Host "::group::verify $target"
+            & $signtool.FullName verify /pa /v $target
+            $code = $LASTEXITCODE
+            Write-Host "::endgroup::"
+            if ($code -ne 0) { throw "signature verification failed: $target" }
+          }
+
       - name: Upload win installer
         if: github.event_name != 'push'
         uses: actions/upload-artifact@v4
@@ -113,7 +139,3 @@ jobs:
             dist/squirrel-windows/*.exe
             dist/squirrel-windows/*.nupkg
             dist/squirrel-windows/RELEASES
-
-      - name: publish
-        if: github.event_name == 'push'
-        run: npm run publish-win
