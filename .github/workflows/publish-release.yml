@@ -108,8 +108,11 @@ jobs:
         if: github.event_name == 'push'
         run: npm run publish-win
 
-      # Fails the build if a signature is missing, untrusted or badly
-      # timestamped, so a broken signing setup can't reach a release.
+      # Fails the build if a signature is missing, untrusted or not
+      # timestamped, so a broken signing setup can't reach a release. The
+      # timestamp check is not optional: Azure Artifact Signing certificates
+      # are only valid for a few days, so an untimestamped signature stops
+      # validating almost immediately after release.
       - name: Verify Authenticode signatures
         shell: pwsh
         run: |
@@ -124,10 +127,12 @@ jobs:
           ) + (Get-ChildItem "dist\squirrel-windows\*.exe" | ForEach-Object FullName)
           foreach ($target in $targets) {
             Write-Host "::group::verify $target"
-            & $signtool.FullName verify /pa /v $target
+            $out = & $signtool.FullName verify /pa /v $target 2>&1
             $code = $LASTEXITCODE
+            $out | Write-Host
             Write-Host "::endgroup::"
             if ($code -ne 0) { throw "signature verification failed: $target" }
+            if ($out -notmatch 'The signature is timestamped') { throw "signature is not timestamped: $target" }
           }
 
       - name: Upload win installer

@@ -46,7 +46,9 @@
       "azureSignOptions": {
         "endpoint": "https://neu.codesigning.azure.net",
         "codeSigningAccountName": "c1st-signing",
-        "certificateProfileName": "printdesk-public-trust"
+        "certificateProfileName": "printdesk-public-trust",
+        "TimestampRfc3161": "http://timestamp.acs.microsoft.com",
+        "TimestampDigest": "SHA256"
       }
     },
     "squirrelWindows": {
