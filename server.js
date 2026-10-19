@@ -19,7 +19,8 @@ const port = 43594;
 const bamdesk = require('./bamdesk.js');
 const openExplorer = require('open-file-explorer');
 const crashReporter = require('electron').crashReporter;
-const fetch = require('electron-fetch').default; 
+const fetch = require('electron-fetch').default;
+const { execFile } = require('child_process');
 
 let hiddenWindow;
 let iconpath;
@@ -130,7 +131,10 @@ function run() {
 		   whole app on print. Passing a Buffer bypasses the string->utf8 conversion. */
 		fs.writeFileSync(htmlTmpName, Buffer.from(String(payload.html), 'utf8'));
 		const pdfWindow = new BrowserWindow({width: 400, height: 400, show : false, webPreferences : { javascript : false }})
+		/* Subscribe before loading: the first paint can happen before loadURL resolves. */
+		const firstPaint = waitForFirstPaint(pdfWindow);
 		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
+		await firstPaint;
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
 		log.info('Print with chrome');
@@ -143,6 +147,12 @@ function run() {
 				marginType,
 			},
 			deviceName: payload.printer.name,
+		}
+		/* Receipt and label templates use a custom page size. Silent printing on
+		   Windows can pick the wrong resolution for those printers, which comes out
+		   as a blank slip (electron/electron#41741), so pass the printer's own. */
+		if (os.platform() === 'win32' && typeof payload.pdfOptions.pageSize === 'object') {
+			options.dpi = await getPrinterDpi(payload.printer.name);
 		}
 		log.info({options});
 
@@ -353,6 +363,69 @@ async function getStatus() {
 
 function isQuitting() {
 	return !hiddenWindow || !hiddenWindow.webContents || hiddenWindow.webContents.isDestroyed();
+}
+
+const FIRST_PAINT_TIMEOUT_MS = 3000;
+const PAINT_SETTLE_MS = 300;
+
+/* Printing a hidden window before it has painted can produce a blank page.
+   Resolves after the first paint plus a short settle delay, or after a timeout
+   so a missing event can never block printing. */
+function waitForFirstPaint(window) {
+	return new Promise((resolve) => {
+		const timer = setTimeout(() => {
+			log.info('ready-to-show did not fire, printing anyway');
+			resolve();
+		}, FIRST_PAINT_TIMEOUT_MS);
+		window.once('ready-to-show', () => {
+			clearTimeout(timer);
+			setTimeout(resolve, PAINT_SETTLE_MS);
+		});
+	});
+}
+
+/* Most thermal receipt printers print at 203 dpi (8 dots/mm). */
+const FALLBACK_PRINTER_DPI = 203;
+const printerDpiCache = new Map();
+
+/* Reads every printer's configured resolution from Windows. The printer name is
+   matched in JS rather than passed to PowerShell, so it never needs escaping. */
+function readPrinterResolutions() {
+	const script = 'Get-CimInstance Win32_PrinterConfiguration | Select-Object Name, HorizontalResolution, VerticalResolution | ConvertTo-Json -Compress';
+	return new Promise((resolve) => {
+		execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 10000, windowsHide: true }, (error, stdout) => {
+			if (error) {
+				log.error('could not read printer resolutions', error);
+				resolve([]);
+				return;
+			}
+			try {
+				const parsed = JSON.parse(stdout);
+				resolve(Array.isArray(parsed) ? parsed : [parsed]);
+			} catch (e) {
+				log.error('could not parse printer resolutions', e);
+				resolve([]);
+			}
+		});
+	});
+}
+
+/* Resolution for a printer, as Electron's print dpi option. Only a resolution
+   actually read from Windows is cached, so a failed lookup is retried. Drivers
+   can report a negative quality constant instead of dpi; those use the fallback. */
+async function getPrinterDpi(printerName) {
+	if (printerDpiCache.has(printerName)) {
+		return printerDpiCache.get(printerName);
+	}
+	const printer = (await readPrinterResolutions()).find(p => p.Name === printerName);
+	const horizontal = printer?.HorizontalResolution > 0 ? printer.HorizontalResolution : FALLBACK_PRINTER_DPI;
+	const vertical = printer?.VerticalResolution > 0 ? printer.VerticalResolution : horizontal;
+	const dpi = { horizontal, vertical };
+	log.info(`print resolution for ${printerName}`, dpi, printer ? 'from Windows' : 'fallback');
+	if (printer) {
+		printerDpiCache.set(printerName, dpi);
+	}
+	return dpi;
 }
 
 module.exports = {
