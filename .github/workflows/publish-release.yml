@@ -22,11 +22,12 @@ jobs:
     runs-on: macos-latest
 
     # macOS-only signing config. Kept out of the workflow-level env so the
-    # Windows job cannot pick up CSC_LINK and sign with the p12 instead of
-    # Azure Artifact Signing.
+    # Windows job cannot sign with the p12 instead of Azure Artifact Signing.
+    # CSC_LINK is deliberately not set for electron-builder: it would import
+    # the p12 into a temporary keychain of its own, which fails to unlock on
+    # macOS 26.6. It signs from the keychain in CSC_KEYCHAIN instead.
     env:
-      CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
-      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+      HAS_SIGNING_CERT: ${{ secrets.CODE_SIGNING_CERTIFICATE != '' }}
       KEYCHAIN_PASS: ${{ secrets.KEYCHAIN_PASS }}
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -48,6 +49,11 @@ jobs:
       - run: npm ci
 
       - name: Setup Certificates
+        # Skipped on fork pull requests, which have no access to the certificate.
+        if: env.HAS_SIGNING_CERT == 'true'
+        env:
+          CSC_LINK: ${{ secrets.CODE_SIGNING_CERTIFICATE }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: |
             echo $CSC_LINK | base64 --decode > certificate.p12
             security create-keychain -p $KEYCHAIN_PASS build.keychain
@@ -56,6 +62,8 @@ jobs:
             security import certificate.p12 -k build.keychain -P $CSC_KEY_PASSWORD -T /usr/bin/codesign;
             security set-key-partition-list -S apple-tool:,apple: -s -k $KEYCHAIN_PASS build.keychain
             rm -rf *.p12
+            security list-keychains -d user -s build.keychain $(security list-keychains -d user | tr -d '"')
+            echo "CSC_KEYCHAIN=$HOME/Library/Keychains/build.keychain-db" >> $GITHUB_ENV
 
       # notarytool wants a file path, so the App Store Connect key is written to
       # disk and APPLE_API_KEY points at it.
@@ -79,7 +87,7 @@ jobs:
       # stapled notarization ticket so offline installs work too.
       - name: Verify signature and notarization
         # Skipped on fork pull requests, which have no access to the certificate.
-        if: env.CSC_LINK != ''
+        if: env.HAS_SIGNING_CERT == 'true'
         run: |
           set -euo pipefail
           shopt -s nullglob
