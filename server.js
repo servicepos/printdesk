@@ -188,7 +188,10 @@ function run() {
 	})
 
 
-	server.listen(port, () => log.info(`listening on port ${port}!`))
+	// Loopback only: the web app connects via 127.0.0.1, and listening on all
+	// interfaces makes Windows Firewall prompt on every update, since each
+	// version installs to a new path.
+	server.listen(port, '127.0.0.1', () => log.info(`listening on 127.0.0.1:${port}`))
 
 	getStoreAndDeviceSettingsLoop();
 	pushPrintersLoop();
