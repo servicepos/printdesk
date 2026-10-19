@@ -131,10 +131,7 @@ function run() {
 		   whole app on print. Passing a Buffer bypasses the string->utf8 conversion. */
 		fs.writeFileSync(htmlTmpName, Buffer.from(String(payload.html), 'utf8'));
 		const pdfWindow = new BrowserWindow({width: 400, height: 400, show : false, webPreferences : { javascript : false }})
-		/* Subscribe before loading: the first paint can happen before loadURL resolves. */
-		const firstPaint = waitForFirstPaint(pdfWindow);
 		await pdfWindow.loadURL(`file://${htmlTmpName}`, {"extraHeaders": "pragma: no-cache\n"});
-		await firstPaint;
 		log.info(payload.pdfOptions);
 		log.info(payload.printer);
 		log.info('Print with chrome');
@@ -148,11 +145,8 @@ function run() {
 			},
 			deviceName: payload.printer.name,
 		}
-		/* Receipt and label templates use a custom page size. Silent printing on
-		   Windows can pick the wrong resolution for those printers, which comes out
-		   as a blank slip (electron/electron#41741), so pass the printer's own. */
 		if (os.platform() === 'win32' && typeof payload.pdfOptions.pageSize === 'object') {
-			options.dpi = await getPrinterDpi(payload.printer.name);
+			await usePrinterPaperIfSizeUnsupported(options, payload.printer.name);
 		}
 		log.info({options});
 
@@ -365,67 +359,80 @@ function isQuitting() {
 	return !hiddenWindow || !hiddenWindow.webContents || hiddenWindow.webContents.isDestroyed();
 }
 
-const FIRST_PAINT_TIMEOUT_MS = 3000;
-const PAINT_SETTLE_MS = 300;
+/* Windows paper id for a user-defined size; drivers list it when they accept custom sizes. */
+const DMPAPER_USER = 256;
+const MM_PER_HUNDREDTH_INCH = 0.254;
+const PAPER_SIZE_TOLERANCE_MM = 1;
+const printerPaperCache = new Map();
 
-/* Printing a hidden window before it has painted can produce a blank page.
-   Resolves after the first paint plus a short settle delay, or after a timeout
-   so a missing event can never block printing. */
-function waitForFirstPaint(window) {
+/* Reads which paper sizes a printer's driver offers. The printer name is passed
+   through an environment variable, so it never needs escaping in the script.
+   Resolves null when the printer can't be queried. */
+function readPrinterPaper(printerName) {
+	const script = [
+		'Add-Type -AssemblyName System.Drawing',
+		'$s = New-Object System.Drawing.Printing.PrinterSettings',
+		'$s.PrinterName = $env:PRINTDESK_PRINTER',
+		'if (-not $s.IsValid) { exit 2 }',
+		'@($s.PaperSizes | ForEach-Object { @{ rawKind = $_.RawKind; width = $_.Width; height = $_.Height } }) | ConvertTo-Json -Compress',
+	].join('; ');
+	const execOptions = { timeout: 15000, windowsHide: true, env: { ...process.env, PRINTDESK_PRINTER: printerName } };
 	return new Promise((resolve) => {
-		const timer = setTimeout(() => {
-			log.info('ready-to-show did not fire, printing anyway');
-			resolve();
-		}, FIRST_PAINT_TIMEOUT_MS);
-		window.once('ready-to-show', () => {
-			clearTimeout(timer);
-			setTimeout(resolve, PAINT_SETTLE_MS);
-		});
-	});
-}
-
-/* Most thermal receipt printers print at 203 dpi (8 dots/mm). */
-const FALLBACK_PRINTER_DPI = 203;
-const printerDpiCache = new Map();
-
-/* Reads every printer's configured resolution from Windows. The printer name is
-   matched in JS rather than passed to PowerShell, so it never needs escaping. */
-function readPrinterResolutions() {
-	const script = 'Get-CimInstance Win32_PrinterConfiguration | Select-Object Name, HorizontalResolution, VerticalResolution | ConvertTo-Json -Compress';
-	return new Promise((resolve) => {
-		execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { timeout: 10000, windowsHide: true }, (error, stdout) => {
+		execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], execOptions, (error, stdout) => {
 			if (error) {
-				log.error('could not read printer resolutions', error);
-				resolve([]);
+				log.error(`could not read paper sizes for ${printerName}`, error);
+				resolve(null);
 				return;
 			}
 			try {
 				const parsed = JSON.parse(stdout);
-				resolve(Array.isArray(parsed) ? parsed : [parsed]);
+				const sizes = Array.isArray(parsed) ? parsed : [parsed];
+				resolve({
+					supportsCustomSize: sizes.some(s => s.rawKind === DMPAPER_USER),
+					sizes: sizes.map(s => ({ rawKind: s.rawKind, width: s.width * MM_PER_HUNDREDTH_INCH, height: s.height * MM_PER_HUNDREDTH_INCH })),
+				});
 			} catch (e) {
-				log.error('could not parse printer resolutions', e);
-				resolve([]);
+				log.error(`could not parse paper sizes for ${printerName}`, e);
+				resolve(null);
 			}
 		});
 	});
 }
 
-/* Resolution for a printer, as Electron's print dpi option. Only a resolution
-   actually read from Windows is cached, so a failed lookup is retried. Drivers
-   can report a negative quality constant instead of dpi; those use the fallback. */
-async function getPrinterDpi(printerName) {
-	if (printerDpiCache.has(printerName)) {
-		return printerDpiCache.get(printerName);
+/* Only a successful lookup is cached, so a failed one is retried on the next print. */
+async function getPrinterPaper(printerName) {
+	if (!printerPaperCache.has(printerName)) {
+		const paper = await readPrinterPaper(printerName);
+		if (!paper) {
+			return null;
+		}
+		printerPaperCache.set(printerName, paper);
 	}
-	const printer = (await readPrinterResolutions()).find(p => p.Name === printerName);
-	const horizontal = printer?.HorizontalResolution > 0 ? printer.HorizontalResolution : FALLBACK_PRINTER_DPI;
-	const vertical = printer?.VerticalResolution > 0 ? printer.VerticalResolution : horizontal;
-	const dpi = { horizontal, vertical };
-	log.info(`print resolution for ${printerName}`, dpi, printer ? 'from Windows' : 'fallback');
-	if (printer) {
-		printerDpiCache.set(printerName, dpi);
+	return printerPaperCache.get(printerName);
+}
+
+/* Silent printing lays the page out at the requested pageSize even when the
+   printer has no such paper, and that prints blank: receipt printer drivers
+   often offer only their own roll size. In that case print on the printer's own
+   paper, as printing through the print dialog does. Printers that have the
+   size, or accept custom sizes, keep printing exactly as requested. */
+async function usePrinterPaperIfSizeUnsupported(options, printerName) {
+	const requested = { width: options.pageSize.width / 1000, height: options.pageSize.height / 1000 };
+	const paper = await getPrinterPaper(printerName);
+	if (!paper) {
+		log.info(`paper sizes for ${printerName} unknown, keeping requested page size`);
+		return;
 	}
-	return dpi;
+	const hasRequestedSize = paper.sizes.some(s =>
+		Math.abs(s.width - requested.width) <= PAPER_SIZE_TOLERANCE_MM &&
+		Math.abs(s.height - requested.height) <= PAPER_SIZE_TOLERANCE_MM);
+	if (paper.supportsCustomSize || hasRequestedSize) {
+		log.info(`${printerName} supports ${requested.width}x${requested.height} mm`, { supportsCustomSize: paper.supportsCustomSize, hasRequestedSize, sizes: paper.sizes });
+		return;
+	}
+	log.info(`${printerName} has no ${requested.width}x${requested.height} mm paper, printing on its own paper size`, { sizes: paper.sizes });
+	delete options.pageSize;
+	options.usePrinterDefaultPageSize = true;
 }
 
 module.exports = {
