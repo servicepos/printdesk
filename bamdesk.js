@@ -13,6 +13,7 @@ let bamdeskProcess = null;
 let currentDevice;
 let askedForMono = false;
 let featureFlags;
+let stopped = false;
 
 /* make sure  a single instance of bamdesk (Payment device driver) is running.
 Internet/usb disconnection etc. will kill any running instance.
@@ -56,6 +57,12 @@ async function keepAlive(device, ff) {
 
 /* start bamdesk if not running */
 async function run() {
+
+	if (stopped) {
+		log.info('Bamdesk stopped, not starting instance');
+		bamdeskProcess = null;
+		return;
+	}
 
 	log.info('Starting instance', currentDevice);
 
@@ -131,6 +138,18 @@ function monoEnv() {
 }
 
 
+/* kill bamdesk for good, e.g. before Printdesk restarts. Without this the
+exit-binding respawns it, and on Windows the child outlives Printdesk, so the
+new instance would start a second driver next to it. */
+function stop() {
+	stopped = true;
+	if (bamdeskProcess) {
+		log.info('Stopping bamdesk');
+		bamdeskProcess.kill();
+	}
+}
+
 module.exports = {
 	keepAlive,
+	stop,
 }

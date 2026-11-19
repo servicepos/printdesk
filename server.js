@@ -61,6 +61,7 @@ function setTrayMenu(status) {
       enabled : false
     })
   }
+	items.push({ type: 'separator' })
 	items.push({
 		label :`View log`,
 		enabled : true,
@@ -85,8 +86,23 @@ function setTrayMenu(status) {
 			});
 		}
 	})
+	items.push({ type: 'separator' })
+	items.push({
+		label :`Restart`,
+		enabled : true,
+		click : restart,
+	})
   const contextMenu = Menu.buildFromTemplate(items);
   tray.setContextMenu(contextMenu)
+}
+
+/* Lets the customer recover from a stuck printer/terminal themselves, instead
+   of support killing the Printdesk processes by hand over remote access. */
+function restart() {
+	log.info('Restart requested from tray menu');
+	bamdesk.stop();
+	app.relaunch();
+	app.exit(0);
 }
 
 function run() {
@@ -99,6 +115,10 @@ function run() {
 
 	tray = new Tray(iconpath)
 	setTrayMenu(null);
+	/* Windows only opens the tray menu on right-click; macOS already opens it on click */
+	if (os.platform() === 'win32') {
+		tray.on('click', () => tray.popUpContextMenu());
+	}
 
 	server.use(function (req, res, next) {
 		res.header("Access-Control-Allow-Origin", "*");
